@@ -2,11 +2,16 @@ package directory
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/dzm2020/actormesh/logicalactor"
 )
 
 type RedisOwnerDirectoryOptions struct {
 	KeyPrefix string
+	LeaseTTL  time.Duration
+	CacheSize int
+	CacheTTL  time.Duration
 }
 
 type ownerEvent struct {

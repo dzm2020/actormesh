@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/dzm2020/actormesh/pkg/serialize/jsoncodec"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/dzm2020/actormesh/logicalactor"
 	"github.com/dzm2020/actormesh/pkg/glog"
+	"github.com/dzm2020/actormesh/pkg/serialize/jsoncodec"
+	"github.com/hashicorp/golang-lru/v2/expirable"
 
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
@@ -24,17 +26,32 @@ var _ logicalactor.OwnerDirectory = (*RedisOwnerDirectory)(nil)
 
 var ErrRedisClientNil = errors.New("redis owner directory client is nil")
 
+const (
+	defaultLeaseTTL  = 30 * time.Second
+	defaultCacheSize = 100000
+)
+
 func NewRedisDirectory(client redis.UniversalClient, options RedisOwnerDirectoryOptions) (*RedisOwnerDirectory, error) {
 	if client == nil {
 		return nil, ErrRedisClientNil
 	}
+	if options.LeaseTTL <= 0 {
+		options.LeaseTTL = defaultLeaseTTL
+	}
+	if options.CacheSize <= 0 {
+		options.CacheSize = defaultCacheSize
+	}
+	if options.CacheTTL <= 0 {
+		options.CacheTTL = options.LeaseTTL
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	m := &RedisOwnerDirectory{
-		client: client,
-		prefix: strings.TrimSpace(options.KeyPrefix),
-		cache:  make(map[string]Owner),
-		cancel: cancel,
-		done:   make(chan struct{}),
+		client:   client,
+		prefix:   strings.TrimSpace(options.KeyPrefix),
+		cache:    expirable.NewLRU[string, Owner](options.CacheSize, nil, options.CacheTTL),
+		leaseTTL: options.LeaseTTL,
+		cancel:   cancel,
+		done:     make(chan struct{}),
 	}
 	m.pubsub = client.Subscribe(ctx, m.updateChannel())
 	go m.consumeOwnerEvents(ctx)
@@ -45,7 +62,8 @@ type RedisOwnerDirectory struct {
 	client   redis.UniversalClient
 	prefix   string
 	cacheMu  sync.RWMutex
-	cache    map[string]Owner
+	cache    *expirable.LRU[string, Owner]
+	leaseTTL time.Duration
 	pubsub   *redis.PubSub
 	cancel   context.CancelFunc
 	done     chan struct{}
@@ -90,32 +108,39 @@ func (m *RedisOwnerDirectory) handleOwnerEvent(message *redis.Message) {
 func (m *RedisOwnerDirectory) tryDelCached(key string, epoch uint64) {
 	m.cacheMu.Lock()
 	defer m.cacheMu.Unlock()
-
-	if current, found := m.cache[key]; found {
+	if current, found := m.cache.Get(key); found {
 		if current.Epoch > epoch {
 			return
 		}
 	}
-	delete(m.cache, key)
+	m.cache.Remove(key)
 }
 
 func (m *RedisOwnerDirectory) getCached(key string) (Owner, bool) {
-	m.cacheMu.RLock()
-	defer m.cacheMu.RUnlock()
-	owner, found := m.cache[key]
+	m.cacheMu.Lock()
+	defer m.cacheMu.Unlock()
+	owner, found := m.cache.Get(key)
 	return owner, found
 }
 
 func (m *RedisOwnerDirectory) trySetCached(key string, owner Owner) {
 	m.cacheMu.Lock()
 	defer m.cacheMu.Unlock()
-	if current, found := m.cache[key]; found {
+	if current, found := m.cache.Get(key); found {
 		if current.Epoch >= owner.Epoch {
 			return
 		}
 	}
-	m.cache[key] = owner
+	m.cache.Add(key, owner)
 	return
+}
+
+func (m *RedisOwnerDirectory) refreshCached(key string, expected logicalactor.NodeInfo) {
+	m.cacheMu.Lock()
+	defer m.cacheMu.Unlock()
+	if current, found := m.cache.Get(key); found && current.Node == expected {
+		m.cache.Add(key, current)
+	}
 }
 
 func (m *RedisOwnerDirectory) AcquireOwner(actorId logicalactor.ActorID, candidate logicalactor.NodeInfo) (logicalactor.NodeInfo, bool, error) {
@@ -125,7 +150,7 @@ func (m *RedisOwnerDirectory) AcquireOwner(actorId logicalactor.ActorID, candida
 	if err := candidate.Validate(); err != nil {
 		return logicalactor.NodeInfo{}, false, err
 	}
-	owner, acquire, err := acquireOwnerFromRedis(m.client, m.prefix, actorId, candidate)
+	owner, acquire, err := acquireOwnerFromRedis(m.client, m.prefix, actorId, candidate, m.leaseTTL)
 	if err != nil {
 		return logicalactor.NodeInfo{}, false, err
 	}
@@ -134,6 +159,25 @@ func (m *RedisOwnerDirectory) AcquireOwner(actorId logicalactor.ActorID, candida
 		m.notifyOwnerUpdate(actorId, owner.Epoch)
 	}
 	return owner.Node, acquire, nil
+}
+
+func (m *RedisOwnerDirectory) LeaseTTL() time.Duration { return m.leaseTTL }
+
+func (m *RedisOwnerDirectory) RenewOwner(actorId logicalactor.ActorID, expectedOwner logicalactor.NodeInfo) (bool, error) {
+	if err := actorId.Validate(); err != nil {
+		return false, err
+	}
+	if err := expectedOwner.Validate(); err != nil {
+		return false, err
+	}
+	renewed, err := renewOwnerFromRedis(m.client, m.prefix, actorId, expectedOwner, m.leaseTTL)
+	if err != nil {
+		return false, fmt.Errorf("renew owner %s: %w", actorId.String(), err)
+	}
+	if renewed {
+		m.refreshCached(actorId.String(), expectedOwner)
+	}
+	return renewed, nil
 }
 
 func (m *RedisOwnerDirectory) GetOwner(actorId logicalactor.ActorID) (logicalactor.NodeInfo, bool, error) {
@@ -197,6 +241,7 @@ func (m *RedisOwnerDirectory) Close() error {
 			return
 		}
 		m.cancel()
+		m.cache.Purge()
 		closeErr := m.pubsub.Close()
 		<-m.done
 		if closeErr != nil {

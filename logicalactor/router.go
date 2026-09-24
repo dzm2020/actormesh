@@ -124,18 +124,23 @@ func (router *Router) RegisterPlacement(kind string, strategy PlacementStrategy)
 	return nil
 }
 
-//func (router *Router) CloseActor(actorId ActorID) error {
-//	if router == nil || router.Status() != component.LifecycleStateStarted {
-//		return ErrLogicalActorRouterNotStarted
-//	}
-//	if err := actorId.Validate(); err != nil {
-//		return err
-//	}
-//	if err := router.actorSystem.Tell(actor.NoSender, actor.NewPID(0, RouterActorName, router.localNodeID()), closeActorRequest{actorID: actorId}); err != nil {
-//		return fmt.Errorf("logical actor close actor_id:%s err:%w", actorId.String(), err)
-//	}
-//	return nil
-//}
+func (router *Router) CloseActor(actorID ActorID) error {
+	if router == nil || router.Status() != component.LifecycleStateStarted {
+		return ErrLogicalActorRouterNotStarted
+	}
+	if err := actorID.Validate(); err != nil {
+		return err
+	}
+	if _, err := router.actorSystem.Ask(
+		actor.NoSender,
+		actor.NewPID(0, RouterActorName, router.localNodeID()),
+		closeActorRequest{actorID: actorID},
+		0,
+	); err != nil {
+		return fmt.Errorf("logical actor close actor_id:%s: %w", actorID.String(), err)
+	}
+	return nil
+}
 
 func (router *Router) Tell(ctx actor.Context, actorId ActorID, message proto.Message) error {
 	target, request, err := router.prepareRoute(ctx, actorId, message)

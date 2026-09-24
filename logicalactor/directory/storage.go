@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/dzm2020/actormesh/logicalactor"
 	"github.com/dzm2020/actormesh/pkg/serialize/jsoncodec"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -28,8 +29,26 @@ if current then
     end
 end
 epoch = redis.call('INCR', KEYS[2])
-redis.call('SET', KEYS[1], ARGV[1])
+local ttl = tonumber(ARGV[2]) or 0
+if ttl > 0 then
+    redis.call('SET', KEYS[1], ARGV[1], 'PX', ttl)
+else
+    redis.call('SET', KEYS[1], ARGV[1])
+end
 return {1,epoch, ARGV[1]}
+`)
+
+var renewOwnerScript = redis.NewScript(`
+local current_value = redis.call('GET', KEYS[1])
+if not current_value then return 0 end
+local current = cjson.decode(current_value)
+local expected = cjson.decode(ARGV[1])
+if current.node_id ~= expected.node_id or current.instance_id ~= expected.instance_id then
+    return 0
+end
+local ttl = tonumber(ARGV[2]) or 0
+if ttl <= 0 then return 1 end
+return redis.call('PEXPIRE', KEYS[1], ttl)
 `)
 
 var deleteOwnerScript = redis.NewScript(`
@@ -50,7 +69,7 @@ end
 return {0,epoch}
 `)
 
-func acquireOwnerFromRedis(client redis.UniversalClient, prefix string, actorId logicalactor.ActorID, candidate logicalactor.NodeInfo) (*Owner, bool, error) {
+func acquireOwnerFromRedis(client redis.UniversalClient, prefix string, actorId logicalactor.ActorID, candidate logicalactor.NodeInfo, leaseTTL time.Duration) (*Owner, bool, error) {
 	candidateJSON, err := jsoncodec.Marshal(candidate)
 	if err != nil {
 		return nil, false, fmt.Errorf("encode candidate %s: %w", actorId.String(), err)
@@ -59,7 +78,7 @@ func acquireOwnerFromRedis(client redis.UniversalClient, prefix string, actorId 
 		genRedisKey(prefix, redisOwnerKey, actorId.String()),
 		genRedisKey(prefix, redisEpochKey, actorId.String()),
 	}
-	result, err := acquireOwnerScript.Run(context.Background(), client, keys, candidateJSON).Slice()
+	result, err := acquireOwnerScript.Run(context.Background(), client, keys, candidateJSON, leaseTTL.Milliseconds()).Slice()
 	if err != nil {
 		return nil, false, err
 	}
@@ -87,6 +106,19 @@ func acquireOwnerFromRedis(client redis.UniversalClient, prefix string, actorId 
 	}
 	owner := &Owner{Node: node, Epoch: epoch}
 	return owner, acquire, nil
+}
+
+func renewOwnerFromRedis(client redis.UniversalClient, prefix string, actorId logicalactor.ActorID, expected logicalactor.NodeInfo, leaseTTL time.Duration) (bool, error) {
+	expectedJSON, err := jsoncodec.Marshal(expected)
+	if err != nil {
+		return false, fmt.Errorf("encode expected owner %s: %w", actorId.String(), err)
+	}
+	keys := []string{genRedisKey(prefix, redisOwnerKey, actorId.String())}
+	result, err := renewOwnerScript.Run(context.Background(), client, keys, expectedJSON, leaseTTL.Milliseconds()).Int64()
+	if err != nil {
+		return false, err
+	}
+	return result == 1, nil
 }
 
 func getOwnerFromRedis(client redis.UniversalClient, prefix string, actorId logicalactor.ActorID) (*Owner, bool, error) {

@@ -138,3 +138,32 @@ func TestRedisOwnerDirectoryRejectsInvalidStoredOwner(t *testing.T) {
 		t.Fatalf("invalid stored owner result = found=%v err=%v", found, err)
 	}
 }
+
+func TestRedisOwnerDirectoryRenewOwner(t *testing.T) {
+	client, prefix := newIntegrationRedis(t)
+	directory, err := NewRedisDirectory(client, RedisOwnerDirectoryOptions{
+		KeyPrefix: prefix,
+		LeaseTTL:  2 * time.Second,
+	})
+	if err != nil {
+		t.Fatalf("create directory: %v", err)
+	}
+	defer directory.Close()
+
+	actorID := logicalactor.ActorID{Kind: "player", Key: fmt.Sprintf("renew-%d", time.Now().UnixNano())}
+	owner := logicalactor.NodeInfo{NodeId: "node-a", Kind: "player", InstanceId: "instance-a"}
+	wrongInstance := logicalactor.NodeInfo{NodeId: "node-a", Kind: "player", InstanceId: "instance-b"}
+	if _, acquired, err := directory.AcquireOwner(actorID, owner); err != nil || !acquired {
+		t.Fatalf("acquire owner: acquired=%v err=%v", acquired, err)
+	}
+	if renewed, err := directory.RenewOwner(actorID, wrongInstance); err != nil || renewed {
+		t.Fatalf("renew with wrong instance: renewed=%v err=%v", renewed, err)
+	}
+	if renewed, err := directory.RenewOwner(actorID, owner); err != nil || !renewed {
+		t.Fatalf("renew owner: renewed=%v err=%v", renewed, err)
+	}
+	ttl, err := client.PTTL(context.Background(), genRedisKey(prefix, redisOwnerKey, actorID.String())).Result()
+	if err != nil || ttl <= 0 {
+		t.Fatalf("owner ttl after renew: ttl=%v err=%v", ttl, err)
+	}
+}

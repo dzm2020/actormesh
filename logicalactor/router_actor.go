@@ -3,6 +3,7 @@ package logicalactor
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/dzm2020/actormesh/actor"
 	logicalactorpb "github.com/dzm2020/actormesh/logicalactor/pb"
@@ -32,15 +33,18 @@ func (r *RouterActor) HandleTell(ctx actor.Context, message any) {
 }
 
 func (r *RouterActor) HandleAsk(ctx actor.Context, message any) (any, error) {
+	if request, ok := message.(closeActorRequest); ok {
+		return true, r.closeActor(request.actorID)
+	}
 	return nil, r.handleMessage(ctx, message)
 }
 
 func (r *RouterActor) handleMessage(ctx actor.Context, message any) error {
 	switch msg := message.(type) {
-	//case closeActorRequest:
-	//	if err := r.closeActor(ctx, msg.actorID); err != nil {
-	//		return fmt.Errorf("close actor %s: %w", msg.actorID.String(), err)
-	//	}
+	case closeActorRequest:
+		if err := r.closeActor(msg.actorID); err != nil {
+			return fmt.Errorf("close actor %s: %w", msg.actorID.String(), err)
+		}
 	case *logicalactorpb.RouteRequest:
 		if err := r.routeMessage(ctx, msg); err != nil {
 			return fmt.Errorf("route message: %w", err)
@@ -51,18 +55,23 @@ func (r *RouterActor) handleMessage(ctx actor.Context, message any) error {
 	return nil
 }
 
-//func (r *RouterActor) closeActor(ctx actor.Context, actorId ActorID) error {
-//	target := actor.NewPID(0, actorId.Name(), r.router.localNodeID())
-//	owner, found, err := r.router.directory.GetOwner(actorId)
-//	if err != nil {
-//		return err
-//	}
-//	if found && !r.router.isLocal(owner) {
-//		return ErrOwnerMismatch
-//	}
-//	r.router.actorSystem.StopProcess(ctx.Sender(), target)
-//	return nil
-//}
+func (r *RouterActor) closeActor(actorID ActorID) error {
+	owner, found, err := r.router.directory.GetOwner(actorID)
+	if err != nil {
+		return err
+	}
+	if !found {
+		return nil
+	}
+	if owner != r.router.local {
+		return ErrOwnerMismatch
+	}
+	target := actor.NewPID(0, actorID.Name(), r.router.localNodeID())
+	if r.router.actorSystem.Has(target) {
+		r.router.actorSystem.StopProcess(actor.NoSender, target)
+	}
+	return nil
+}
 
 func (r *RouterActor) routeMessage(ctx actor.Context, request *logicalactorpb.RouteRequest) error {
 	if request == nil {
@@ -151,10 +160,34 @@ type ownedActor struct {
 	actorId       ActorID
 	owner         NodeInfo
 	routerRuntime *Router
+	leaseTimerID  int64
 }
 
 func (owned *ownedActor) Init(ctx actor.Context) {
+	owned.tryStartRenew(ctx)
 	owned.actorInstance.Init(ctx)
+}
+
+func (owned *ownedActor) tryStartRenew(ctx actor.Context) {
+	lease := owned.routerRuntime.directory.LeaseTTL()
+	if lease <= 0 {
+		return
+	}
+	interval := lease / 3
+	if interval < time.Second {
+		interval = time.Second
+	}
+	owned.leaseTimerID = ctx.Ticker(interval, func(timerCtx actor.Context) {
+		renewed, err := owned.routerRuntime.directory.RenewOwner(owned.actorId, owned.owner)
+		if err != nil {
+			timerCtx.Logger().Error("renew logical actor owner failed", zap.Error(err))
+			return
+		}
+		if !renewed {
+			ctx.Logger().Warn("logical actor owner lease lost")
+			ctx.StopTimer(owned.leaseTimerID)
+		}
+	})
 }
 
 func (owned *ownedActor) HandleTell(ctx actor.Context, message any) {

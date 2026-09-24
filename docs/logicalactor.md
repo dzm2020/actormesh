@@ -75,6 +75,7 @@ Forward(ctx actor.Context, actorID ActorID, message proto.Message) error
 - `Tell`：异步投递，不等待响应。
 - `Ask`：等待响应或超时。
 - `Forward`：保留当前 Actor 消息的 Sender 和请求元数据。
+- `CloseActor`：由当前 Owner 节点主动停止逻辑 Actor，并在停止时清理 Owner 记录。
 - `ctx == nil` 返回 `ErrActorContextNil`。
 - 无效 Protobuf 消息由 Protobuf 编解码器返回错误。
 - Router 未启动时返回 `ErrLogicalActorRouterNotStarted`。
@@ -92,7 +93,7 @@ Forward(ctx actor.Context, actorID ActorID, message proto.Message) error
 
 ## Actor 停止与 Owner 清理
 
-当前 `ActorRouter` 接口没有导出的 `CloseActor` 方法，源码中与之对应的实现仍处于注释状态，因此业务代码不能依赖 `router.CloseActor(...)`。
+`ActorRouter.CloseActor` 只允许当前 Owner 节点执行。Owner 不属于当前节点时返回 `ErrOwnerMismatch`；Owner 不存在时按幂等成功处理。Actor 停止后仍由 `ownedActor.Destroy` 完成条件删除。
 
 逻辑 Actor 的正常清理由包装器 `ownedActor.Destroy` 完成：Actor 进程停止时，它使用创建该实例时记录的 Owner 调用 `OwnerDirectory.DeleteOwner`，然后再调用业务 Actor 的 `Destroy`。删除操作是条件删除，只有目录中的 `node_id` 和 `instance_id` 都与 expected owner 相同才会删除；因此旧实例不能删除新实例的 Owner。若进程异常退出，目录没有 TTL，后续路由会通过 Discovery 判断 Owner 是否存活并尝试清理。
 
@@ -106,7 +107,9 @@ defer directory.Close()
 
 Key 当前生成格式为 `{directory}.<KeyPrefix><actorID>` 和 `{directory}.<KeyPrefix><actorID>.epoch`；即使 `KeyPrefix` 为空也保留 `{directory}.` 前缀，Owner Key 与 Epoch Key 因此处于同一 Redis Cluster hash slot。两个 Key 由同一个 Lua 脚本同时访问。`GetOwner` 先查本地缓存，缓存未命中再执行 Lua 查询；`AcquireOwner` 使用 Lua 原子抢占；`DeleteOwner` 要求 `node_id` 和 `instance_id` 同时匹配；Owner 变化通过 Pub/Sub 通知其他实例清理缓存。
 
-当前限制：Owner 记录没有 TTL、租约、fencing token 或 epoch 自动过期机制。节点异常退出后，失效 Owner 依赖路由器发现节点不存活并执行 `DeleteOwner`。Redis 客户端为 nil 时返回 `ErrRedisClientNil`。
+Redis Owner Directory 支持租约 TTL 和续租。默认租约为 30 秒，Owner Actor 按租约周期的三分之一自动续租；节点异常退出后，Owner 会在 TTL 到期后自动失效。Owner 记录仍没有独立的 fencing token，epoch 用于 Owner 变化和缓存失效控制。Redis 客户端为 nil 时返回 `ErrRedisClientNil`。
+
+可通过 `RedisOwnerDirectoryOptions` 调整 `LeaseTTL`、`CacheSize` 和 `CacheTTL`。本地 Owner 缓存使用可过期 LRU，超过容量或 TTL 后自动淘汰；Redis Pub/Sub 事件会根据 epoch 失效旧缓存。
 
 ## API 参考
 
@@ -117,6 +120,7 @@ Key 当前生成格式为 `{directory}.<KeyPrefix><actorID>` 和 `{directory}.<K
 | `(*Router).Start/Stop` | 启停内部 Router Actor |
 | `RegisterFactory` / `RegisterPlacement` | 注册 Factory 和 Placement |
 | `Tell` / `Ask` / `Forward` | 逻辑消息路由 |
+| `CloseActor` | 停止当前 Owner 节点上的逻辑 Actor |
 | `ActorID.Validate/String/Name` | 校验和格式化逻辑 ID |
 | `NodeInfo.Validate` | 校验节点信息 |
 | `NewRedisDirectory` | 创建 Redis Owner Directory |

@@ -3,6 +3,7 @@ package logicalactor
 import (
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/dzm2020/actormesh/actor"
 	"github.com/dzm2020/actormesh/pkg/component"
@@ -19,7 +20,7 @@ type ActorRouter interface {
 	SetDirectory(ownerDirectory OwnerDirectory)
 	RegisterFactory(kind string, factory ActorFactory) error
 	RegisterPlacement(kind string, strategy PlacementStrategy) error
-	//CloseActor(actorID ActorID) error
+	CloseActor(actorID ActorID) error
 	Tell(ctx actor.Context, actorID ActorID, message proto.Message) error
 	Ask(ctx actor.Context, actorID ActorID, message proto.Message) (any, error)
 	Forward(ctx actor.Context, actorID ActorID, message proto.Message) error
@@ -27,7 +28,9 @@ type ActorRouter interface {
 type OwnerDirectory interface {
 	GetOwner(actorID ActorID) (owner NodeInfo, found bool, err error)
 	AcquireOwner(actorID ActorID, candidate NodeInfo) (owner NodeInfo, acquired bool, err error)
+	RenewOwner(actorID ActorID, expectedOwner NodeInfo) (renewed bool, err error)
 	DeleteOwner(actorID ActorID, expectedOwner NodeInfo) (deleted bool, err error)
+	LeaseTTL() time.Duration
 }
 
 type PlacementStrategy interface {
