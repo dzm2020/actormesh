@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package logicalactor;
+
+import "google/protobuf/any.proto";
+
+option go_package = "game-server/framework/logicalactor/pb;logicalactorpb";
+
+message ActorID {
+  string kind = 1;
+  string key = 2;
+}
+
+message Owner {
+  string node_id = 1;
+  string instance_id = 2;
+  uint64 epoch = 3;
+}
+
+message RouteRequest {
+  ActorID actor_id = 1;
+  Owner owner = 2;
+  google.protobuf.Any message = 3;
+  uint32 forward_count = 4;
+}

@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package actor;
+
+option go_package = "game-server/framework/actor/pb;actorpb";
+
+message PID {
+  uint64 actor_id = 1;
+  string actor_name = 2;
+  string node_id = 3;
+}
+
+message RequestRef {
+  string node_id = 1;
+  uint64 request_id = 2;
+}
+
+message RemoteActorCommon {
+  PID source_pid = 1;
+  PID target_pid = 2;
+  string target_node_id = 3;
+}
+
+message RemoteActorRequest {
+  string message_name = 1;
+  bytes payload = 2;
+  RequestRef request = 3;
+}
+
+enum RemoteMessageKind {
+  REMOTE_MESSAGE_KIND_UNSPECIFIED = 0;
+  ASK_RESPONSE = 2;
+  ASK_ERROR = 3;
+}
+
+message RemoteActorResponse {
+  RemoteMessageKind kind = 1;
+  RequestRef request = 2;
+  string message_name = 3;
+  bytes payload = 4;
+  string error = 5;
+  uint32 error_code = 6;
+}
+
+message RemoteActorMessage {
+  RemoteActorCommon common = 1;
+  oneof body {
+    RemoteActorRequest request = 2;
+    RemoteActorResponse response = 3;
+  }
+}

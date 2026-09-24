@@ -1,0 +1,109 @@
+package glog
+
+import (
+	"fmt"
+	"strings"
+
+	"go.uber.org/zap/zapcore"
+)
+
+// Config glog 配置结构
+type Config struct {
+	// Path 日志文件路径
+	Path string `json:"path" yaml:"path"`
+	// Level 日志级别: debug, info, warn, error, dpanic, panic, fatal
+	Level string `json:"level" yaml:"level"`
+	// PrintConsole 是否同时输出到控制台
+	PrintConsole bool `json:"printConsole" yaml:"printConsole"`
+	// MaxSize 单个日志文件最大大小（MB），超过则切割
+	MaxSize int `json:"maxSize" yaml:"maxSize"`
+	// MaxBackups 最大文件保留数，超过就删除最老的日志文件
+	MaxBackups int `json:"maxBackups" yaml:"maxBackups"`
+	// MaxAge 日志文件保留天数
+	MaxAge int `json:"maxAge" yaml:"maxAge"`
+	// Compress 是否压缩旧日志文件
+	Compress bool `json:"compress" yaml:"compress"`
+	// LocalTime 是否使用本地时间
+	LocalTime bool `json:"localTime" yaml:"localTime"`
+}
+
+// DefaultConfig 返回默认配置
+func DefaultConfig() Config {
+	return Config{
+		Path:         "./logs/app.log",
+		Level:        "info",
+		PrintConsole: true,
+		MaxSize:      500,
+		MaxBackups:   100,
+		MaxAge:       30,
+		Compress:     false,
+		LocalTime:    true,
+	}
+}
+
+// NormalizeOptions normalizes logger options with defaults.
+func NormalizeOptions(options Config) Config {
+	defaults := DefaultConfig()
+	if options.Path == "" {
+		options.Path = defaults.Path
+	}
+	if options.Level == "" {
+		options.Level = defaults.Level
+	} else {
+		options.Level = strings.ToLower(options.Level)
+	}
+	if options.MaxSize <= 0 {
+		options.MaxSize = defaults.MaxSize
+	}
+	if options.MaxBackups <= 0 {
+		options.MaxBackups = defaults.MaxBackups
+	}
+	if options.MaxAge <= 0 {
+		options.MaxAge = defaults.MaxAge
+	}
+	return options
+}
+
+// ValidateOptions validates logger options.
+func ValidateOptions(options Config) error {
+	if options.Path == "" {
+		return fmt.Errorf("logger path is empty")
+	}
+	switch strings.ToLower(options.Level) {
+	case "debug", "info", "warn", "error", "dpanic", "panic", "fatal":
+	default:
+		return fmt.Errorf("invalid logger level: %s", options.Level)
+	}
+	if options.MaxSize <= 0 {
+		return fmt.Errorf("invalid logger max size: %d", options.MaxSize)
+	}
+	if options.MaxBackups <= 0 {
+		return fmt.Errorf("invalid logger max backups: %d", options.MaxBackups)
+	}
+	if options.MaxAge <= 0 {
+		return fmt.Errorf("invalid logger max age: %d", options.MaxAge)
+	}
+	return nil
+}
+
+// parseLevel 解析日志级别字符串为 zapcore.Level（不区分大小写）
+func parseLevel(level string) zapcore.Level {
+	switch strings.ToLower(level) {
+	case "debug":
+		return zapcore.DebugLevel
+	case "info":
+		return zapcore.InfoLevel
+	case "warn":
+		return zapcore.WarnLevel
+	case "error":
+		return zapcore.ErrorLevel
+	case "dpanic":
+		return zapcore.DPanicLevel
+	case "panic":
+		return zapcore.PanicLevel
+	case "fatal":
+		return zapcore.FatalLevel
+	default:
+		return zapcore.InfoLevel
+	}
+}
