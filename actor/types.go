@@ -1,7 +1,7 @@
 package actor
 
 import (
-	actorpb "game-server/framework/actor/pb"
+	actorpb "github.com/dzm2020/actormesh/actor/pb"
 	"time"
 )
 

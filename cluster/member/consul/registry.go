@@ -3,8 +3,8 @@ package consul
 import (
 	"context"
 	"fmt"
-	"game-server/framework/cluster/member"
-	"game-server/framework/pkg/glog"
+	"github.com/dzm2020/actormesh/cluster/member"
+	"github.com/dzm2020/actormesh/pkg/glog"
 
 	"sync/atomic"
 

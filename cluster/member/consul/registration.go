@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"game-server/framework/pkg/glog"
-	"game-server/framework/pkg/grs"
+	"github.com/dzm2020/actormesh/pkg/glog"
+	"github.com/dzm2020/actormesh/pkg/grs"
 	"sync"
 
 	"time"

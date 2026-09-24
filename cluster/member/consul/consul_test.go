@@ -2,7 +2,7 @@ package consul
 
 import (
 	"context"
-	"game-server/framework/pkg/glog"
+	"github.com/dzm2020/actormesh/pkg/glog"
 	"sync"
 	"testing"
 	"time"

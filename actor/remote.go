@@ -3,9 +3,9 @@ package actor
 import (
 	"errors"
 	"fmt"
-	"game-server/framework/pkg/serialize/protocodec"
+	"github.com/dzm2020/actormesh/pkg/serialize/protocodec"
 
-	actorpb "game-server/framework/actor/pb"
+	actorpb "github.com/dzm2020/actormesh/actor/pb"
 
 	"go.uber.org/zap"
 )

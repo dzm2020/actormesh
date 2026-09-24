@@ -4,7 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
-	"game-server/framework/pkg/timer"
+	"github.com/dzm2020/actormesh/pkg/timer"
 	"sync"
 	"sync/atomic"
 	"time"

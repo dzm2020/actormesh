@@ -2,10 +2,10 @@ package gateway
 
 import (
 	"fmt"
-	"game-server/framework/actor"
-	"game-server/framework/network"
-	"game-server/framework/network/protocol"
-	"game-server/framework/pkg/serialize/protocodec"
+	"github.com/dzm2020/actormesh/actor"
+	"github.com/dzm2020/actormesh/network"
+	"github.com/dzm2020/actormesh/network/protocol"
+	"github.com/dzm2020/actormesh/pkg/serialize/protocodec"
 
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"

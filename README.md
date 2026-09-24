@@ -153,7 +153,7 @@ ActorMesh 提供运行时和基础设施抽象，不替业务决定数据模型�
 github.com/dzm2020/actormesh
 ```
 
-仓库中的部分源码仍保留旧的 `game-server/framework/...` 内部导入路径，当前版本属于模块路径迁移阶段。作为源码使用时，请先统一这些导入路径，再执行：
+仓库源码已统一使用当前模块路径。执行：
 
 ```bash
 go mod download

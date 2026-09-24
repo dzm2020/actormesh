@@ -2,8 +2,8 @@ package network
 
 import (
 	"context"
-	"game-server/framework/network/protocol"
-	"game-server/framework/pkg/glog"
+	"github.com/dzm2020/actormesh/network/protocol"
+	"github.com/dzm2020/actormesh/pkg/glog"
 	"net"
 	"testing"
 	"time"

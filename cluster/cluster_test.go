@@ -1,8 +1,8 @@
 package cluster
 
 import (
-	"game-server/framework/cluster/member"
-	"game-server/framework/pkg/glog"
+	"github.com/dzm2020/actormesh/cluster/member"
+	"github.com/dzm2020/actormesh/pkg/glog"
 	"testing"
 	"time"
 

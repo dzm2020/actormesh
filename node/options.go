@@ -2,13 +2,13 @@ package node
 
 import (
 	"errors"
-	"game-server/framework/actor"
-	"game-server/framework/cluster"
-	"game-server/framework/logicalactor"
+	"github.com/dzm2020/actormesh/actor"
+	"github.com/dzm2020/actormesh/cluster"
+	"github.com/dzm2020/actormesh/logicalactor"
 	"strings"
 	"time"
 
-	"game-server/framework/pkg/glog"
+	"github.com/dzm2020/actormesh/pkg/glog"
 
 	"go.uber.org/zap/zapcore"
 )

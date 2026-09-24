@@ -3,11 +3,11 @@ package logicalactor
 import (
 	"errors"
 	"fmt"
-	"game-server/framework/actor"
-	logicalactorpb "game-server/framework/logicalactor/pb"
-	"game-server/framework/pkg/component"
-	"game-server/framework/pkg/glog"
-	"game-server/framework/pkg/serialize/protocodec"
+	"github.com/dzm2020/actormesh/actor"
+	logicalactorpb "github.com/dzm2020/actormesh/logicalactor/pb"
+	"github.com/dzm2020/actormesh/pkg/component"
+	"github.com/dzm2020/actormesh/pkg/glog"
+	"github.com/dzm2020/actormesh/pkg/serialize/protocodec"
 	"strings"
 	"sync"
 

@@ -9,7 +9,7 @@ package network
 
 import (
 	"errors"
-	"game-server/framework/network/protocol"
+	"github.com/dzm2020/actormesh/network/protocol"
 	"net/http"
 	"net/http/httptest"
 	"strings"

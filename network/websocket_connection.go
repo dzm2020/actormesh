@@ -2,8 +2,8 @@ package network
 
 import (
 	"errors"
-	"game-server/framework/network/protocol"
-	"game-server/framework/pkg/buffer"
+	"github.com/dzm2020/actormesh/network/protocol"
+	"github.com/dzm2020/actormesh/pkg/buffer"
 	"io"
 	"time"
 	"unicode/utf8"

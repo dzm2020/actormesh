@@ -3,8 +3,8 @@ package directory
 import (
 	"context"
 	"fmt"
-	"game-server/framework/logicalactor"
-	"game-server/framework/pkg/serialize/jsoncodec"
+	"github.com/dzm2020/actormesh/logicalactor"
+	"github.com/dzm2020/actormesh/pkg/serialize/jsoncodec"
 
 	"github.com/redis/go-redis/v9"
 )

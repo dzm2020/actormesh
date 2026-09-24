@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"game-server/framework/network/protocol"
-	"game-server/framework/pkg/glog"
+	"github.com/dzm2020/actormesh/network/protocol"
+	"github.com/dzm2020/actormesh/pkg/glog"
 	"time"
 
-	"game-server/framework/cluster/transport"
-	"game-server/framework/network"
+	"github.com/dzm2020/actormesh/cluster/transport"
+	"github.com/dzm2020/actormesh/network"
 
 	"go.uber.org/zap"
 )

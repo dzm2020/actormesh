@@ -2,8 +2,8 @@ package network
 
 import (
 	"errors"
-	"game-server/framework/pkg/buffer"
-	"game-server/framework/pkg/netutil"
+	"github.com/dzm2020/actormesh/pkg/buffer"
+	"github.com/dzm2020/actormesh/pkg/netutil"
 	"io"
 	"net"
 	"time"

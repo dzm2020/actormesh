@@ -2,7 +2,7 @@ package network
 
 import (
 	"context"
-	"game-server/framework/pkg/grs"
+	"github.com/dzm2020/actormesh/pkg/grs"
 	"net"
 	"time"
 )

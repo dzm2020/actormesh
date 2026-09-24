@@ -1,7 +1,7 @@
 package network
 
 import (
-	"game-server/framework/pkg/netutil"
+	"github.com/dzm2020/actormesh/pkg/netutil"
 	"time"
 
 	"github.com/gorilla/websocket"

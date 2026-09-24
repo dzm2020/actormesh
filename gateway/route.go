@@ -3,13 +3,13 @@ package gateway
 import (
 	"errors"
 	"fmt"
-	"game-server/framework/pkg/serialize/protocodec"
+	"github.com/dzm2020/actormesh/pkg/serialize/protocodec"
 	"reflect"
 	"sync"
 
-	"game-server/framework/actor"
-	"game-server/framework/network/protocol"
-	"game-server/framework/pkg/glog"
+	"github.com/dzm2020/actormesh/actor"
+	"github.com/dzm2020/actormesh/network/protocol"
+	"github.com/dzm2020/actormesh/pkg/glog"
 
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"

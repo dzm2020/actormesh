@@ -4,10 +4,10 @@ import (
 	"errors"
 	"strings"
 
-	"game-server/framework/actor"
-	"game-server/framework/pkg/component"
+	"github.com/dzm2020/actormesh/actor"
+	"github.com/dzm2020/actormesh/pkg/component"
 
-	logicalactorpb "game-server/framework/logicalactor/pb"
+	logicalactorpb "github.com/dzm2020/actormesh/logicalactor/pb"
 
 	"google.golang.org/protobuf/proto"
 )

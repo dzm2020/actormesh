@@ -3,11 +3,11 @@ package nettransport
 import (
 	"errors"
 	"fmt"
-	"game-server/framework/cluster/transport"
-	"game-server/framework/network"
-	"game-server/framework/network/protocol"
-	"game-server/framework/pkg/glog"
-	"game-server/framework/pkg/grs"
+	"github.com/dzm2020/actormesh/cluster/transport"
+	"github.com/dzm2020/actormesh/network"
+	"github.com/dzm2020/actormesh/network/protocol"
+	"github.com/dzm2020/actormesh/pkg/glog"
+	"github.com/dzm2020/actormesh/pkg/grs"
 	"time"
 
 	"go.uber.org/zap"

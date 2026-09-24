@@ -2,7 +2,7 @@ package network
 
 import (
 	"context"
-	"game-server/framework/pkg/glog"
+	"github.com/dzm2020/actormesh/pkg/glog"
 	"net"
 
 	"go.uber.org/zap"

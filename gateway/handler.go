@@ -3,9 +3,9 @@ package gateway
 import (
 	"errors"
 	"fmt"
-	"game-server/framework/actor"
-	"game-server/framework/network"
-	"game-server/framework/network/protocol"
+	"github.com/dzm2020/actormesh/actor"
+	"github.com/dzm2020/actormesh/network"
+	"github.com/dzm2020/actormesh/network/protocol"
 )
 
 var ErrClientAgentNotFound = errors.New("gateway client agent not found")

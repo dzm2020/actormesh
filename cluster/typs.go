@@ -1,8 +1,8 @@
 package cluster
 
 import (
-	"game-server/framework/cluster/member"
-	"game-server/framework/pkg/component"
+	"github.com/dzm2020/actormesh/cluster/member"
+	"github.com/dzm2020/actormesh/pkg/component"
 )
 
 type MessageHandler func(nodeID string, data []byte) error

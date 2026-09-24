@@ -2,7 +2,7 @@ package nettransport
 
 import (
 	"errors"
-	"game-server/framework/network"
+	"github.com/dzm2020/actormesh/network"
 	"net"
 	"testing"
 	"time"

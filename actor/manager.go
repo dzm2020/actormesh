@@ -2,7 +2,7 @@ package actor
 
 import (
 	"fmt"
-	"game-server/framework/pkg/grs"
+	"github.com/dzm2020/actormesh/pkg/grs"
 	"sync"
 	"time"
 )

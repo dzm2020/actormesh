@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"game-server/framework/logicalactor"
+	"github.com/dzm2020/actormesh/logicalactor"
 
 	"github.com/redis/go-redis/v9"
 )

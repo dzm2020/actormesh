@@ -1,7 +1,7 @@
 package network
 
 import (
-	"game-server/framework/network/protocol"
+	"github.com/dzm2020/actormesh/network/protocol"
 	"net"
 	"sync/atomic"
 

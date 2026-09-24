@@ -3,9 +3,9 @@ package gateway
 import (
 	"errors"
 	"fmt"
-	"game-server/framework/actor"
-	"game-server/framework/network/protocol"
-	"game-server/framework/pkg/serialize/protocodec"
+	"github.com/dzm2020/actormesh/actor"
+	"github.com/dzm2020/actormesh/network/protocol"
+	"github.com/dzm2020/actormesh/pkg/serialize/protocodec"
 	"sync/atomic"
 
 	"go.uber.org/zap"

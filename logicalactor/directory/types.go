@@ -2,7 +2,7 @@ package directory
 
 import (
 	"fmt"
-	"game-server/framework/logicalactor"
+	"github.com/dzm2020/actormesh/logicalactor"
 )
 
 type RedisOwnerDirectoryOptions struct {

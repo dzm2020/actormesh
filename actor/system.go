@@ -2,9 +2,9 @@ package actor
 
 import (
 	"fmt"
-	"game-server/framework/pkg/component"
-	"game-server/framework/pkg/glog"
-	"game-server/framework/pkg/snowflake"
+	"github.com/dzm2020/actormesh/pkg/component"
+	"github.com/dzm2020/actormesh/pkg/glog"
+	"github.com/dzm2020/actormesh/pkg/snowflake"
 	"sync"
 	"sync/atomic"
 

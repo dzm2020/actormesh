@@ -1,7 +1,7 @@
 package actor
 
 import (
-	"game-server/framework/pkg/mpsc"
+	"github.com/dzm2020/actormesh/pkg/mpsc"
 	"runtime"
 	"sync"
 	"sync/atomic"

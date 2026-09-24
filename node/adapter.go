@@ -1,11 +1,11 @@
 package node
 
 import (
-	"game-server/framework/cluster"
+	"github.com/dzm2020/actormesh/cluster"
 	"strings"
 
-	"game-server/framework/cluster/member"
-	"game-server/framework/logicalactor"
+	"github.com/dzm2020/actormesh/cluster/member"
+	"github.com/dzm2020/actormesh/logicalactor"
 )
 
 const NodeInstanceIDMetaKey = "node_instance_id"

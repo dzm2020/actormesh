@@ -4,7 +4,7 @@ package logicalactor;
 
 import "google/protobuf/any.proto";
 
-option go_package = "game-server/framework/logicalactor/pb;logicalactorpb";
+option go_package = "github.com/dzm2020/actormesh/logicalactor/pb;logicalactorpb";
 
 message ActorID {
   string kind = 1;

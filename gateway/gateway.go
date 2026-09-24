@@ -3,11 +3,11 @@ package gateway
 import (
 	"context"
 	"errors"
-	"game-server/framework/actor"
-	"game-server/framework/network"
-	"game-server/framework/pkg/component"
-	"game-server/framework/pkg/glog"
-	"game-server/framework/pkg/grs"
+	"github.com/dzm2020/actormesh/actor"
+	"github.com/dzm2020/actormesh/network"
+	"github.com/dzm2020/actormesh/pkg/component"
+	"github.com/dzm2020/actormesh/pkg/glog"
+	"github.com/dzm2020/actormesh/pkg/grs"
 	"sync"
 	"time"
 

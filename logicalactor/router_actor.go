@@ -3,9 +3,10 @@ package logicalactor
 import (
 	"errors"
 	"fmt"
-	"game-server/framework/actor"
-	logicalactorpb "game-server/framework/logicalactor/pb"
-	"game-server/framework/pkg/glog"
+
+	"github.com/dzm2020/actormesh/actor"
+	logicalactorpb "github.com/dzm2020/actormesh/logicalactor/pb"
+	"github.com/dzm2020/actormesh/pkg/glog"
 
 	"go.uber.org/zap"
 )

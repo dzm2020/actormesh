@@ -2,7 +2,7 @@ package network
 
 import (
 	"context"
-	"game-server/framework/network/protocol"
+	"github.com/dzm2020/actormesh/network/protocol"
 	"sync/atomic"
 
 	"go.uber.org/zap"

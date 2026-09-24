@@ -1,10 +1,10 @@
 package node
 
 import (
-	"game-server/framework/actor"
-	"game-server/framework/cluster"
-	"game-server/framework/logicalactor"
-	"game-server/framework/pkg/component"
+	"github.com/dzm2020/actormesh/actor"
+	"github.com/dzm2020/actormesh/cluster"
+	"github.com/dzm2020/actormesh/logicalactor"
+	"github.com/dzm2020/actormesh/pkg/component"
 )
 
 type NodeAPI interface {

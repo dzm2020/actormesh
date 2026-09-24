@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package actor;
 
-option go_package = "game-server/framework/actor/pb;actorpb";
+option go_package = "github.com/dzm2020/actormesh/actor/pb;actorpb";
 
 message PID {
   uint64 actor_id = 1;

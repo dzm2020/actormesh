@@ -3,7 +3,7 @@ package actor
 import (
 	"time"
 
-	"game-server/framework/pkg/component"
+	"github.com/dzm2020/actormesh/pkg/component"
 
 	"go.uber.org/zap"
 )

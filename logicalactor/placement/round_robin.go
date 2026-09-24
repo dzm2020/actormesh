@@ -6,7 +6,7 @@ import (
 	"sort"
 	"sync/atomic"
 
-	"game-server/framework/logicalactor"
+	"github.com/dzm2020/actormesh/logicalactor"
 )
 
 var _ logicalactor.PlacementStrategy = (*RoundRobinStrategy)(nil)

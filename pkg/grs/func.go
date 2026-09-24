@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"game-server/framework/pkg/glog"
+	"github.com/dzm2020/actormesh/pkg/glog"
 
 	"go.uber.org/zap"
 )

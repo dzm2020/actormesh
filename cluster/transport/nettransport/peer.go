@@ -2,9 +2,9 @@ package nettransport
 
 import (
 	"errors"
-	"game-server/framework/cluster/transport"
-	"game-server/framework/network"
-	"game-server/framework/network/protocol"
+	"github.com/dzm2020/actormesh/cluster/transport"
+	"github.com/dzm2020/actormesh/network"
+	"github.com/dzm2020/actormesh/network/protocol"
 	"sync"
 	"sync/atomic"
 )

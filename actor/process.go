@@ -2,8 +2,8 @@ package actor
 
 import (
 	"fmt"
-	"game-server/framework/pkg/glog"
-	"game-server/framework/pkg/timer"
+	"github.com/dzm2020/actormesh/pkg/glog"
+	"github.com/dzm2020/actormesh/pkg/timer"
 	"sync"
 	"sync/atomic"
 	"time"
