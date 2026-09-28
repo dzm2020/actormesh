@@ -1,7 +1,9 @@
 package gateway
 
 import (
+	"errors"
 	"fmt"
+
 	"github.com/dzm2020/actormesh/actor"
 	"github.com/dzm2020/actormesh/network"
 	"github.com/dzm2020/actormesh/network/protocol"
@@ -14,6 +16,7 @@ import (
 type ClientAgent interface {
 	network.Connection
 	actor.Actor
+	Push(message proto.Message) error
 }
 
 func NewAgent(connection network.Connection, route ClientRoute) *Agent {
@@ -69,21 +72,33 @@ func (a *Agent) handleOutbound(message proto.Message) (bool, error) {
 	if route == nil {
 		return false, nil
 	}
-	cmd, act, ok := route.ResolveOutbound(message)
+	_, _, ok := route.ResolveOutbound(message)
 	if !ok {
 		return false, nil
+	}
+	return true, a.Push(message)
+}
+
+func (a *Agent) Push(message proto.Message) error {
+	route := a.route
+	if route == nil {
+		return errors.New("route is nil")
+	}
+	cmd, act, ok := route.ResolveOutbound(message)
+	if !ok {
+		return errors.New("route resolve outbound error")
 	}
 	//  已注册s2c消息
 	data, err := protocodec.Marshal(message)
 	if err != nil {
-		return true, fmt.Errorf("agent marshal s2c err:%w", err)
+		return fmt.Errorf("agent marshal s2c err:%w", err)
 	}
 	frame := protocol.NewMessageFrame(cmd, act, 0, data)
 
 	if err = a.SendMessage(frame); err != nil {
-		return true, fmt.Errorf("agent send s2c message err:%w", err)
+		return fmt.Errorf("agent send s2c message err:%w", err)
 	}
-	return true, nil
+	return nil
 }
 
 func (a *Agent) Destroy(ctx actor.Context) {
