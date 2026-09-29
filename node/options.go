@@ -2,18 +2,16 @@ package node
 
 import (
 	"errors"
+	"strings"
+
 	"github.com/dzm2020/actormesh/actor"
 	"github.com/dzm2020/actormesh/cluster"
 	"github.com/dzm2020/actormesh/logicalactor"
-	"strings"
-	"time"
-
+	"github.com/dzm2020/actormesh/pkg/component"
 	"github.com/dzm2020/actormesh/pkg/glog"
 
 	"go.uber.org/zap/zapcore"
 )
-
-const defaultShutdownTimeout = 30 * time.Second
 
 type LoggerOptions = glog.Config
 
@@ -21,6 +19,7 @@ type Options struct {
 	ID                    string
 	Kind                  string
 	ClusterAddress        string
+	Meta                  map[string]string
 	Logger                LoggerOptions
 	Behavior              NodeBehavior
 	PanicHook             zapcore.CheckWriteHook
@@ -28,6 +27,7 @@ type Options struct {
 	Cluster               cluster.ClusterAPI
 	LogicalActorRouter    logicalactor.ActorRouter
 	LogicalActorDirectory logicalactor.OwnerDirectory
+	Components            []component.IComponent
 }
 
 func normalizeNodeOptions(options Options) Options {

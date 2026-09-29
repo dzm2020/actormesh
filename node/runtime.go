@@ -3,6 +3,10 @@ package node
 import (
 	"errors"
 	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/dzm2020/actormesh/actor"
 	"github.com/dzm2020/actormesh/cluster"
 	"github.com/dzm2020/actormesh/cluster/member"
@@ -10,10 +14,6 @@ import (
 	"github.com/dzm2020/actormesh/pkg/component"
 	"github.com/dzm2020/actormesh/pkg/glog"
 	"github.com/dzm2020/actormesh/pkg/netutil"
-	"os"
-	"os/signal"
-	"syscall"
-
 	"go.uber.org/zap"
 )
 
@@ -22,25 +22,26 @@ func (n *Node) bootstrapNode() error {
 	if err := validateNodeOptions(options); err != nil {
 		return fmt.Errorf("node bootstrap %w", err)
 	}
-	instance, err := n.buildServiceInstance()
-	if err != nil {
-		return fmt.Errorf("node bootstrap %w", err)
-	}
-	n.options = options
-	if err = n.initializeLogger(); err != nil {
-		return fmt.Errorf("node bootstrap %w", err)
-	}
 
-	n.cluster = options.Cluster
-	if n.cluster == nil {
-		n.cluster = cluster.New(instance, func(nodeID string, data []byte) error {
-			return n.system.OnMessage(nodeID, data)
-		})
+	n.options = options
+	if err := n.initializeLogger(); err != nil {
+		return fmt.Errorf("node bootstrap %w", err)
 	}
 
 	n.system = options.System
 	if n.system == nil {
 		n.system = actor.NewSystem(n.GetID(), n.cluster)
+	}
+
+	instance, err := n.buildServiceInstance()
+	if err != nil {
+		return fmt.Errorf("node bootstrap %w", err)
+	}
+	n.cluster = options.Cluster
+	if n.cluster == nil {
+		n.cluster = cluster.New(instance, func(nodeID string, data []byte) error {
+			return n.system.OnMessage(nodeID, data)
+		})
 	}
 
 	n.logicalActorRouter = options.LogicalActorRouter
@@ -59,14 +60,18 @@ func (n *Node) buildServiceInstance() (member.ServiceInstance, error) {
 	if err != nil {
 		return member.ServiceInstance{}, err
 	}
+	meta := make(map[string]string, len(n.options.Meta)+1)
+	for key, value := range n.options.Meta {
+		meta[key] = value
+	}
+	meta[NodeInstanceIDMetaKey] = n.GetInstanceID()
 	return member.ServiceInstance{
 		ID:      n.GetID(),
 		Name:    n.GetKind(),
 		Address: host,
 		Port:    port,
-		Meta: map[string]string{
-			NodeInstanceIDMetaKey: n.GetInstanceID(),
-		}}, nil
+		Meta:    meta,
+	}, nil
 }
 
 func (n *Node) initializeLogger() error {
@@ -99,7 +104,6 @@ func (n *Node) Startup() (err error) {
 	defer func() {
 		n.shutdown()
 	}()
-
 	if err = n.start(); err != nil {
 		return err
 	}

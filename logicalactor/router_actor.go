@@ -180,7 +180,7 @@ func (owned *ownedActor) tryStartRenew(ctx actor.Context) {
 	owned.leaseTimerID = ctx.Ticker(interval, func(timerCtx actor.Context) {
 		renewed, err := owned.routerRuntime.directory.RenewOwner(owned.actorId, owned.owner)
 		if err != nil {
-			timerCtx.Logger().Error("renew logical actor owner failed", zap.Error(err))
+			ctx.Logger().Error("renew logical actor owner failed", zap.Error(err))
 			return
 		}
 		if !renewed {
