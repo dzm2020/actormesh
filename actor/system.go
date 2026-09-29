@@ -18,6 +18,7 @@ func NewSystem(nodeId string, sender RemoteSender) *System {
 		remoteSender: sender,
 		mgr:          newManger(nodeId),
 		requests:     newRequestManager(defaultMaxPendingRequests),
+		idGenerator:  snowflake.NewDefault(),
 	}
 	s.SetName("actor")
 	s.logger = glog.With(zap.String("component", s.GetName()))
@@ -33,6 +34,7 @@ type System struct {
 	mgr          *manager
 	remoteSender RemoteSender    // 远程发送端口
 	requests     *requestManager // 同步调用管理器
+	idGenerator  *snowflake.SnowFlake
 	logger       *zap.Logger
 	// 连接关闭相关
 	spawnMu  sync.RWMutex
@@ -40,7 +42,7 @@ type System struct {
 }
 
 func (s *System) nextId() uint64 {
-	return uint64(snowflake.GenId())
+	return uint64(s.idGenerator.GenId())
 }
 
 func (s *System) GetNodeID() string {
