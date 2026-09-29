@@ -2,11 +2,12 @@ package actor
 
 import (
 	"fmt"
+	"sync"
+	"sync/atomic"
+
 	"github.com/dzm2020/actormesh/pkg/component"
 	"github.com/dzm2020/actormesh/pkg/glog"
 	"github.com/dzm2020/actormesh/pkg/snowflake"
-	"sync"
-	"sync/atomic"
 
 	"go.uber.org/zap"
 )

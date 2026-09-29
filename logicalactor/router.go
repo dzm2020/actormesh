@@ -25,7 +25,7 @@ const maxOwnerResolveAttempts = 3
 
 var ErrLogicalActorRouterNotStarted = errors.New("logical actor router is not started")
 
-func New(local NodeInfo, actorSystem actor.SystemAPI, discovery Discovery) ActorRouter {
+func New(local NodeInfo, actorSystem actor.RouterRuntime, discovery Discovery) ActorRouter {
 	router := &Router{
 		local:       local,
 		discovery:   discovery,
@@ -43,7 +43,7 @@ var _ ActorRouter = (*Router)(nil)
 type Router struct {
 	component.BaseComponent
 	local       NodeInfo
-	actorSystem actor.SystemAPI
+	actorSystem actor.RouterRuntime
 	discovery   Discovery
 	directory   OwnerDirectory
 	placements  *maputil.ConcurrentMap[string, PlacementStrategy]

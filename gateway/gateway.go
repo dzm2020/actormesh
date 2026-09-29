@@ -3,13 +3,14 @@ package gateway
 import (
 	"context"
 	"errors"
+	"sync"
+	"time"
+
 	"github.com/dzm2020/actormesh/actor"
 	"github.com/dzm2020/actormesh/network"
 	"github.com/dzm2020/actormesh/pkg/component"
 	"github.com/dzm2020/actormesh/pkg/glog"
 	"github.com/dzm2020/actormesh/pkg/grs"
-	"sync"
-	"time"
 
 	"github.com/duke-git/lancet/v2/maputil"
 	"go.uber.org/zap"
@@ -20,9 +21,14 @@ var (
 	ErrAgentSpawnerNil = errors.New("gateway agent spawner is nil")
 )
 
+type ActorGateway interface {
+	actor.EnvelopeSender
+	actor.Supervisor
+}
+
 type AgentSpawner func(network.Connection) (*actor.PID, error)
 
-func New(server network.Server, system actor.SystemAPI, spawner AgentSpawner) *Gateway {
+func New(server network.Server, system ActorGateway, spawner AgentSpawner) *Gateway {
 	gateway := &Gateway{
 		server:  server,
 		system:  system,
@@ -40,7 +46,7 @@ type Gateway struct {
 	ctx      context.Context
 	cancel   context.CancelFunc
 	server   network.Server
-	system   actor.SystemAPI
+	system   ActorGateway
 	spawner  AgentSpawner
 	logger   *zap.Logger
 	pids     *maputil.ConcurrentMap[int64, *actor.PID]

@@ -21,26 +21,61 @@ type RemoteReceiver interface {
 	OnMessage(nodeID string, data []byte) error
 }
 
-// SystemAPI defines actor system lifecycle, actor management, and messaging capabilities.
-type SystemAPI interface {
+type Lifecycle interface {
 	component.IComponent
 	RemoteReceiver
+}
+
+type Spawner interface {
+	SpawnActor(handler Actor, options SpawnOptions) (*PID, error)
+}
+
+type Registry interface {
 	// GetNodeID 获取当前 Actor 系统所属的集群节点 ID。
 	GetNodeID() string
-	// Has  是否存在进程
+	// Has 是否存在进程。
 	Has(pid *PID) bool
-	// SpawnActor creates and starts an actor.
-	SpawnActor(handler Actor, options SpawnOptions) (*PID, error)
+}
+
+type Messenger interface {
 	// Tell 投递一条不等待结果的独立异步消息。
 	Tell(from, target *PID, message any) error
 	// Ask 投递请求并等待 respond 返回结果或超时。
 	Ask(from, target *PID, message any, timeout time.Duration) (any, error)
 	// AskAsync 投递请求，并在发起请求的 Actor 邮箱中异步处理结果。
 	AskAsync(from, target *PID, message any, timeout time.Duration, complete AskCompletion) error
-	// SendEnvelope 将已构造的消息信封投递到指定 Actor。
+}
+
+type ActorRequester interface {
+	Ask(from, target *PID, message any, timeout time.Duration) (any, error)
+}
+
+type EnvelopeSender interface {
 	SendEnvelope(target *PID, envelope Envelope) error
-	// StopProcess 停止指定 PID 对应的本地 Actor。
+}
+
+type Supervisor interface {
 	StopProcess(from, target *PID)
+}
+
+type Runtime interface {
+	Spawner
+	Registry
+	Messenger
+	EnvelopeSender
+	Supervisor
+}
+
+type RouterRuntime interface {
+	Spawner
+	Registry
+	ActorRequester
+	Supervisor
+}
+
+type SystemAPI interface {
+	Lifecycle
+	Runtime
 }
 
 // AskCompletion handles an asynchronous Ask result in the requesting actor mailbox.
