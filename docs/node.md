@@ -51,7 +51,7 @@ func (b Behavior) OnStart(n node.NodeAPI) error {
 }
 ```
 
-业务组件必须在 Node 进入运行阶段前通过 `AddComponent` 注册；进入运行阶段后再次添加会返回 `ErrNodeInvalidPhase`。Node 会按注册顺序初始化、启动，按逆序停止。
+业务组件必须在 Node 进入运行阶段前通过 `AddComponent` 注册，或通过 `Options.Components` 提供；进入运行阶段后再次添加会返回 `ErrNodeInvalidPhase`。实现 `Priority() int` 的组件会按优先级初始化、启动，数值越小越早；相同优先级保持注册顺序。停止时按该顺序逆序执行。
 
 ## NodeAPI
 

@@ -51,7 +51,7 @@ manager := component.NewComponentsMgr()
 if err := manager.Add(first, second); err != nil { return err }
 ```
 
-Manager 按名称索引组件，同时保存注册顺序。`RangeInOrder` 和 `RangeInReverseOrder` 分别按正序、逆序遍历；`Range` 不保证顺序。名称重复、nil 组件和删除未注册组件分别返回对应错误。
+Manager 按名称索引组件，同时保存注册顺序。实现 `Priority() int` 的组件会按优先级排序，数值越小越早执行；相同优先级保持注册顺序。嵌入 `BaseComponent` 的组件默认优先级为 `0`，未实现该方法的组件也按 `0` 处理。`RangeInOrder` 和 `RangeInReverseOrder` 分别按优先级正序、逆序遍历；`Range` 不保证顺序。名称重复、nil 组件和删除未注册组件分别返回对应错误。
 
 ## 主要 API
 
@@ -65,4 +65,5 @@ Manager 按名称索引组件，同时保存注册顺序。`RangeInOrder` 和 `R
 | `(*Manager).Range(...)` | 无序遍历 |
 | `(*Manager).RangeInOrder(...)` | 按注册顺序遍历 |
 | `(*Manager).RangeInReverseOrder(...)` | 按逆序遍历 |
+| `PriorityComponent` | 可选的组件排序能力，`Priority()` 越小越早执行 |
 | `(*BaseComponent).GuardInit/GuardStart/GuardStop` | 执行生命周期状态保护 |

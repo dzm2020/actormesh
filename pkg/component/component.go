@@ -10,6 +10,12 @@ type IComponent interface {
 	Status() LifecycleState
 }
 
+// PriorityComponent is an optional component ordering capability. Lower
+// values are initialized and started first.
+type PriorityComponent interface {
+	Priority() int
+}
+
 var _ IComponent = (*BaseComponent)(nil)
 
 type BaseComponent struct {
@@ -23,6 +29,12 @@ func (c *BaseComponent) GetName() string {
 
 func (c *BaseComponent) SetName(s string) {
 	c.name = s
+}
+
+// Priority controls component lifecycle order. Lower values are initialized
+// and started first; components with the same priority keep registration order.
+func (c *BaseComponent) Priority() int {
+	return 0
 }
 
 func (c *BaseComponent) Init() error {

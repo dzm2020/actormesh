@@ -88,9 +88,9 @@ func (n *Node) initializeLogger() error {
 }
 
 func (n *Node) registerCoreComponents() error {
-	components := []component.IComponent{
-		n.system, n.cluster,
-	}
+	components := make([]component.IComponent, 0, len(n.options.Components)+3)
+	components = append(components, n.options.Components...)
+	components = append(components, n.system, n.cluster)
 	if n.logicalActorRouter != nil {
 		components = append(components, n.logicalActorRouter)
 	}

@@ -2,6 +2,7 @@ package component
 
 import (
 	"fmt"
+	"sort"
 	"sync"
 
 	"github.com/duke-git/lancet/v2/maputil"
@@ -106,16 +107,7 @@ func (cm *Manager) RangeInOrder(fn func(component IComponent) bool) {
 	if fn == nil {
 		return
 	}
-	cm.orderMu.RLock()
-	order := make([]string, len(cm.order))
-	copy(order, cm.order)
-	cm.orderMu.RUnlock()
-
-	for _, name := range order {
-		component, ok := cm.components.Get(name)
-		if !ok {
-			continue
-		}
+	for _, component := range cm.orderedComponents() {
 		if !fn(component) {
 			return
 		}
@@ -127,18 +119,39 @@ func (cm *Manager) RangeInReverseOrder(fn func(component IComponent) bool) {
 	if fn == nil {
 		return
 	}
+	components := cm.orderedComponents()
+	for i := len(components) - 1; i >= 0; i-- {
+		component := components[i]
+		if !fn(component) {
+			return
+		}
+	}
+}
+
+// orderedComponents returns a stable priority ordering. Registration order is
+// retained for components with equal priority.
+func (cm *Manager) orderedComponents() []IComponent {
 	cm.orderMu.RLock()
 	order := make([]string, len(cm.order))
 	copy(order, cm.order)
 	cm.orderMu.RUnlock()
 
-	for i := len(order) - 1; i >= 0; i-- {
-		component, ok := cm.components.Get(order[i])
-		if !ok {
-			continue
-		}
-		if !fn(component) {
-			return
+	components := make([]IComponent, 0, len(order))
+	for _, name := range order {
+		component, ok := cm.components.Get(name)
+		if ok {
+			components = append(components, component)
 		}
 	}
+	sort.SliceStable(components, func(i, j int) bool {
+		return priorityOf(components[i]) < priorityOf(components[j])
+	})
+	return components
+}
+
+func priorityOf(c IComponent) int {
+	if prioritized, ok := c.(PriorityComponent); ok {
+		return prioritized.Priority()
+	}
+	return 0
 }
