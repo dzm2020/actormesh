@@ -28,11 +28,6 @@ func (n *Node) bootstrapNode() error {
 		return fmt.Errorf("node bootstrap %w", err)
 	}
 
-	n.system = options.System
-	if n.system == nil {
-		n.system = actor.NewSystem(n.GetID(), n.cluster)
-	}
-
 	instance, err := n.buildServiceInstance()
 	if err != nil {
 		return fmt.Errorf("node bootstrap %w", err)
@@ -42,6 +37,11 @@ func (n *Node) bootstrapNode() error {
 		n.cluster = cluster.New(instance, func(nodeID string, data []byte) error {
 			return n.system.OnMessage(nodeID, data)
 		})
+	}
+
+	n.system = options.System
+	if n.system == nil {
+		n.system = actor.NewSystem(n.GetID(), n.cluster)
 	}
 
 	n.logicalActorRouter = options.LogicalActorRouter
