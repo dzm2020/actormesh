@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/dzm2020/actormesh/network/protocol"
 	"github.com/dzm2020/actormesh/pkg/glog"
+
 	"time"
 
 	"github.com/dzm2020/actormesh/cluster/transport"
@@ -15,23 +17,37 @@ import (
 )
 
 var (
-	ErrMessageNil       = errors.New("rpc message is nil")
 	ErrHandlerIsNil     = errors.New("rpc business handler is nil")
 	ErrPeerNotConnected = errors.New("rpc peer is not connected")
 )
 
 var _ transport.Transport = (*Transport)(nil)
 
-func NewTransport(localNodeID string) *Transport {
-	return NewTransportWithOptions(localNodeID, network.DefaultTCPConfig(""))
+type Options struct {
+	LocalNodeID string
+	TcpConfig   *network.TCPConfig
+	Logger      *glog.Logger
 }
 
-func NewTransportWithOptions(localNodeID string, config *network.TCPConfig) *Transport {
-	config.Normalize()
+func (m *Options) logger() *glog.Logger {
+	if m.Logger == nil {
+		return glog.Log()
+	}
+	return m.Logger
+}
+func (m *Options) tcpConfig() *network.TCPConfig {
+	if m.TcpConfig == nil {
+		return network.DefaultTCPConfig("")
+	}
+	return m.TcpConfig
+}
+
+func NewTransportWithOptions(options Options) *Transport {
 	t := &Transport{
-		localNodeID: localNodeID,
-		config:      config,
+		localNodeID: options.LocalNodeID,
+		config:      options.tcpConfig(),
 		peers:       newPeerManager(),
+		logger:      options.logger(),
 	}
 	t.ctx, t.cancel = context.WithCancel(context.Background())
 	return t
@@ -43,6 +59,7 @@ type Transport struct {
 	peers       *peerManager // 连接管理器
 	ctx         context.Context
 	cancel      context.CancelFunc
+	logger      *glog.Logger
 }
 
 func (t *Transport) newConfig(address string) *network.TCPConfig {
@@ -57,6 +74,7 @@ func (t *Transport) newHandler(businessHandler transport.MessageHandler) *transp
 		peers:             t.peers,
 		localId:           t.localNodeID,
 		heartbeatInterval: t.config.HeartbeatTimeout / 2,
+		logger:            t.logger,
 	}
 }
 
@@ -69,7 +87,7 @@ func (t *Transport) ListenAndServe(address string, handler transport.MessageHand
 		return fmt.Errorf("rpc server run err:%w", err)
 	}
 
-	glog.Info("rpc listen", zap.String("address", address))
+	t.logger.Info("rpc listen", zap.String("address", address))
 	return nil
 }
 
@@ -100,7 +118,7 @@ func (t *Transport) Connect(remoteId string, address string, handler transport.M
 	conn, err := network.DialTCP(t.ctx, timeout, t.newHandler(handler), t.newConfig(address), h)
 	if err != nil {
 		t.peers.remove(remoteId, h)
-		glog.Error("rpc connect", zap.String("remoteId", remoteId), zap.Error(err))
+		t.logger.Error("rpc connect", zap.String("remoteId", remoteId), zap.Error(err))
 		return err
 	}
 	if err = t.ctx.Err(); err != nil {
@@ -108,7 +126,7 @@ func (t *Transport) Connect(remoteId string, address string, handler transport.M
 		t.peers.remove(remoteId, h)
 		return err
 	}
-	glog.Info("rpc connect success", zap.String("remoteId", remoteId), zap.String("address", address))
+	t.logger.Info("rpc connect success", zap.String("remoteId", remoteId), zap.String("address", address))
 	return nil
 }
 
@@ -118,7 +136,7 @@ func (t *Transport) Disconnect(nodeId string) error {
 		return fmt.Errorf("rpc peer not exist:%s", nodeId)
 	}
 	h.close()
-	glog.Info("rpc  disconnected", zap.String("remoteId", nodeId))
+	t.logger.Info("rpc disconnected", zap.String("remoteId", nodeId))
 	return nil
 }
 
@@ -145,7 +163,7 @@ func (t *Transport) Broadcast(data []byte) error {
 		sent++
 	}
 	if sent != len(helpers) {
-		glog.Warn("rpc broadcast incomplete",
+		t.logger.Warn("rpc broadcast incomplete",
 			zap.Int("sent_count", sent),
 			zap.Int("attempted", len(helpers)), zap.Error(lastErr))
 		return nil

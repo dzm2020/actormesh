@@ -3,12 +3,13 @@ package nettransport
 import (
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/dzm2020/actormesh/cluster/transport"
 	"github.com/dzm2020/actormesh/network"
 	"github.com/dzm2020/actormesh/network/protocol"
 	"github.com/dzm2020/actormesh/pkg/glog"
 	"github.com/dzm2020/actormesh/pkg/grs"
-	"time"
 
 	"go.uber.org/zap"
 )
@@ -34,6 +35,7 @@ type transportHandler struct {
 	businessHandler   transport.MessageHandler
 	peers             *peerManager
 	heartbeatInterval time.Duration
+	logger            *glog.Logger
 }
 
 func (c *transportHandler) OnConnected(connection network.Connection) error {
@@ -58,15 +60,15 @@ func (c *transportHandler) OnConnected(connection network.Connection) error {
 	nodeId := c.localId
 	msg := protocol.NewMessageFrame(clusterMessageCommand, clusterMessageActHello, 0, []byte(nodeId))
 	if err = connection.SendMessage(msg); err != nil {
-		glog.Error("rpc send hello", zap.Int64("connId", connection.ID()), zap.String("nodeId", nodeId), zap.Error(err))
+		c.logger.Error("rpc send hello", zap.Int64("connId", connection.ID()), zap.String("nodeId", nodeId), zap.Error(err))
 		return err
 	}
-	glog.Info("rpc send hello", zap.Int64("connId", connection.ID()), zap.String("nodeId", nodeId))
+	c.logger.Info("rpc send hello", zap.Int64("connId", connection.ID()), zap.String("nodeId", nodeId))
 	return nil
 }
 
 func (c *transportHandler) OnMessage(connection network.Connection, frame *protocol.MessageFrame) error {
-	glog.Debug("rpc message", zap.Int64("connId", connection.ID()),
+	c.logger.Debug("rpc message", zap.Int64("connId", connection.ID()),
 		zap.Uint8("cmd", frame.Cmd),
 		zap.Uint8("cmd", frame.Act),
 		zap.Binary("body", frame.Body),
@@ -85,7 +87,7 @@ func (c *transportHandler) OnMessage(connection network.Connection, frame *proto
 			return fmt.Errorf("handle heartbeat err:%w", err)
 		}
 	default:
-		glog.Error("rpc invalid msgId", zap.Int64("connId", connection.ID()),
+		c.logger.Error("rpc invalid msgId", zap.Int64("connId", connection.ID()),
 			zap.Uint8("cmd", frame.Cmd), zap.Uint8("act", frame.Act))
 		return nil
 	}
@@ -148,7 +150,7 @@ func (c *transportHandler) handleData(conn network.Connection, message *protocol
 		return fmt.Errorf("state:%v %w", p.getState(), ErrPeerState)
 	}
 	if err = c.businessHandler(p.getRemoteId(), message.Body); err != nil {
-		glog.Error("rpc handle data", zap.Int64("connId", conn.ID()), zap.String("remoteId", p.getRemoteId()), zap.Error(err))
+		c.logger.Error("rpc handle data", zap.Int64("connId", conn.ID()), zap.String("remoteId", p.getRemoteId()), zap.Error(err))
 		return nil
 	}
 	return nil
@@ -160,7 +162,7 @@ func (c *transportHandler) OnClose(conn network.Connection, cause error) {
 		return
 	}
 	c.peers.remove(p.getRemoteId(), p)
-	glog.Info("rpc close", zap.Int64("connId", conn.ID()), zap.Error(cause))
+	c.logger.Info("rpc close", zap.Int64("connId", conn.ID()), zap.Error(cause))
 }
 
 func (c *transportHandler) getPeer(connection network.Connection) (*peer, error) {
@@ -189,7 +191,7 @@ func (c *transportHandler) runHeartbeatLoop(conn network.Connection) {
 			case <-ticker.C:
 				msg := protocol.NewMessageFrame(clusterMessageCommand, clusterMessageActHeartbeat, 0, nil)
 				if err := conn.SendMessage(msg); err != nil {
-					glog.Warn("rpc send heartbeat", zap.Int64("connId", conn.ID()), zap.Error(err))
+					c.logger.Warn("rpc send heartbeat", zap.Int64("connId", conn.ID()), zap.Error(err))
 				}
 			}
 		}

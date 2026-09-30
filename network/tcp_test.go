@@ -25,7 +25,6 @@ import (
 	"fmt"
 	"github.com/dzm2020/actormesh/network/protocol"
 	"github.com/dzm2020/actormesh/pkg/buffer"
-	"github.com/dzm2020/actormesh/pkg/glog"
 	"github.com/dzm2020/actormesh/pkg/netutil"
 	"net"
 	"sync"
@@ -33,12 +32,7 @@ import (
 	"time"
 
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 )
-
-func init() {
-	glog.SetLogLevel(zapcore.InfoLevel)
-}
 
 const (
 	// tcpTestWait 是等待异步事件（收包、连接关闭、服务端退出）的通用上限。

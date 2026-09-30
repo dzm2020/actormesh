@@ -13,15 +13,32 @@ import (
 )
 
 func NewSystem(nodeId string, sender RemoteSender) *System {
+	return NewSystemWithOptions(SystemOptions{NodeID: nodeId, RemoteSender: sender})
+}
+
+type SystemOptions struct {
+	NodeID       string
+	RemoteSender RemoteSender
+	Logger       *glog.Logger
+}
+
+func (m *SystemOptions) logger() *glog.Logger {
+	if m.Logger == nil {
+		return glog.Log()
+	}
+	return m.Logger
+}
+func NewSystemWithOptions(options SystemOptions) *System {
 	s := &System{
-		nodeID:       nodeId,
-		remoteSender: sender,
-		mgr:          newManger(nodeId),
+		nodeID:       options.NodeID,
+		remoteSender: options.RemoteSender,
+		mgr:          newManger(options.NodeID),
 		requests:     newRequestManager(defaultMaxPendingRequests),
 		idGenerator:  snowflake.NewDefault(),
+		logger:       options.logger(),
 	}
 	s.SetName("actor")
-	s.logger = glog.With(zap.String("component", s.GetName()))
+	s.logger = s.logger.With(zap.String("component", s.GetName()))
 	return s
 }
 
@@ -35,7 +52,7 @@ type System struct {
 	remoteSender RemoteSender    // 远程发送端口
 	requests     *requestManager // 同步调用管理器
 	idGenerator  *snowflake.SnowFlake
-	logger       *zap.Logger
+	logger       *glog.Logger
 	// 连接关闭相关
 	spawnMu  sync.RWMutex
 	stopping atomic.Bool

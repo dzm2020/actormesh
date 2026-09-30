@@ -2,9 +2,10 @@ package network
 
 import (
 	"context"
-	"github.com/dzm2020/actormesh/pkg/grs"
 	"net"
 	"time"
+
+	"github.com/dzm2020/actormesh/pkg/grs"
 )
 
 func DialTCP(ctx context.Context, timeout time.Duration, handler TransportHandler, config *TCPConfig, userdata interface{}) (*TCPConnection, error) {

@@ -2,10 +2,11 @@ package network
 
 import (
 	"context"
-	"github.com/dzm2020/actormesh/network/protocol"
-	"sync/atomic"
 
-	"go.uber.org/zap"
+	"github.com/dzm2020/actormesh/network/protocol"
+	"github.com/dzm2020/actormesh/pkg/glog"
+
+	"sync/atomic"
 )
 
 type Server interface {
@@ -28,7 +29,7 @@ type Connection interface {
 	SetUserData(data any)
 	Role() ConnectionRole
 	Network() string
-	Log() *zap.Logger
+	Log() *glog.Logger
 	SendMessage(message *protocol.MessageFrame) error
 	Close(err error)
 }

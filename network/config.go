@@ -1,13 +1,16 @@
 package network
 
 import (
-	"github.com/dzm2020/actormesh/pkg/netutil"
 	"time"
+
+	"github.com/dzm2020/actormesh/pkg/glog"
+	"github.com/dzm2020/actormesh/pkg/netutil"
 
 	"github.com/gorilla/websocket"
 )
 
 type CommonConfig struct {
+	Logger           *glog.Logger
 	Address          string
 	EncryptEnable    bool
 	HeartbeatTimeout time.Duration
@@ -44,6 +47,9 @@ func (config *CommonConfig) Normalize() {
 	}
 	if config.WriteTimeout <= 0 {
 		config.WriteTimeout = time.Second * 3
+	}
+	if config.Logger == nil {
+		config.Logger = glog.Log()
 	}
 }
 

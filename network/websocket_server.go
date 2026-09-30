@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/dzm2020/actormesh/pkg/glog"
 	"net"
 	"net/http"
 	"time"
@@ -24,6 +23,7 @@ type WebSocketServer struct {
 }
 
 func (s *WebSocketServer) Run(ctx context.Context, handler TransportHandler) error {
+	logger := s.config.Logger
 	return runEngine(ctx,
 		func() (endpoint, error) {
 			//  监听地址
@@ -31,22 +31,22 @@ func (s *WebSocketServer) Run(ctx context.Context, handler TransportHandler) err
 			if err != nil {
 				return nil, fmt.Errorf("websocket server :%w", err)
 			}
-			glog.Info("websocket server listener created", zap.String("address", listener.Addr().String()))
+			logger.Info("websocket server listener created", zap.String("address", listener.Addr().String()))
 			return listener, nil
 		},
 		func(e endpoint) {
 			listener := e.(net.Listener)
-			glog.Info("websocket server running", zap.String("address", listener.Addr().String()))
+			logger.Info("websocket server running", zap.String("address", listener.Addr().String()))
 			mux := http.NewServeMux()
 			mux.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
 				conn, err := s.config.Upgrader.Upgrade(writer, request, nil)
 				if err != nil {
-					glog.Error("websocket upgrade failed", zap.Error(err))
+					logger.Error("websocket upgrade failed", zap.Error(err))
 					return
 				}
 				wsConn := newWebSocketConnection(handler, s.config, conn)
 				if err = wsConn.runStart(); err != nil {
-					glog.Error("websocket connection start failed", zap.Error(err))
+					logger.Error("websocket connection start failed", zap.Error(err))
 				}
 			})
 			httpServer := &http.Server{
@@ -56,8 +56,8 @@ func (s *WebSocketServer) Run(ctx context.Context, handler TransportHandler) err
 			}
 			serveErr := httpServer.Serve(listener)
 			if serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) && ctx.Err() == nil {
-				glog.Error("websocket  server stopped unexpectedly", zap.Error(serveErr))
+				logger.Error("websocket server stopped unexpectedly", zap.Error(serveErr))
 			}
-		})
+		}, logger)
 
 }

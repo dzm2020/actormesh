@@ -3,6 +3,7 @@ package consul
 import (
 	"context"
 	"fmt"
+
 	"github.com/dzm2020/actormesh/cluster/member"
 	"github.com/dzm2020/actormesh/pkg/glog"
 
@@ -24,6 +25,7 @@ func NewWithOptions(options Options) *Registry {
 	r := &Registry{
 		options:      normalizeOptions(options),
 		subscription: NewSubscriptionCenter(),
+		logger:       options.logger(),
 	}
 	return r
 }
@@ -37,6 +39,7 @@ type Registry struct {
 	watcher      *watcher
 	reg          *registration
 	subscription *SubscriptionCenter
+	logger       *glog.Logger
 }
 
 func (r *Registry) Run(ctx context.Context) error {
@@ -49,7 +52,7 @@ func (r *Registry) Run(ctx context.Context) error {
 	r.reg = newRegistration(r)
 	//  初始化watcher
 	r.watcher = newWatcher(r, r.ctx)
-	glog.Info("consul init", zap.String("address", r.options.Address))
+	r.logger.Info("consul init", zap.String("address", r.options.Address))
 	return nil
 }
 

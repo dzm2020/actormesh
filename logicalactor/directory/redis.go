@@ -52,6 +52,7 @@ func NewRedisDirectory(client redis.UniversalClient, options RedisOwnerDirectory
 		leaseTTL: options.LeaseTTL,
 		cancel:   cancel,
 		done:     make(chan struct{}),
+		logger:   options.logger(),
 	}
 	m.pubsub = client.Subscribe(ctx, m.updateChannel())
 	go m.consumeOwnerEvents(ctx)
@@ -68,6 +69,7 @@ type RedisOwnerDirectory struct {
 	cancel   context.CancelFunc
 	done     chan struct{}
 	stopOnce sync.Once
+	logger   *glog.Logger
 }
 
 func (m *RedisOwnerDirectory) updateChannel() string {
@@ -82,7 +84,7 @@ func (m *RedisOwnerDirectory) consumeOwnerEvents(ctx context.Context) {
 			if ctx.Err() != nil {
 				return
 			}
-			glog.Warn("redis owner directory subscription stopped", zap.Error(err))
+			m.logger.Warn("redis owner directory subscription stopped", zap.Error(err))
 			continue
 		}
 		m.handleOwnerEvent(message)
@@ -95,7 +97,7 @@ func (m *RedisOwnerDirectory) handleOwnerEvent(message *redis.Message) {
 	}
 	var event ownerEvent
 	if err := jsoncodec.Unmarshal([]byte(message.Payload), &event); err != nil {
-		glog.Error("redis owner directory event decode failed", zap.Error(err))
+		m.logger.Error("redis owner directory event decode failed", zap.Error(err))
 		return
 	}
 
@@ -225,11 +227,11 @@ func (m *RedisOwnerDirectory) notifyOwnerUpdate(actorId logicalactor.ActorID, ep
 	}
 	jsonBytes, err := json.Marshal(&event)
 	if err != nil {
-		glog.Error("redis owner directory event encode failed", zap.Error(err))
+		m.logger.Error("redis owner directory event encode failed", zap.Error(err))
 		return
 	}
 	if err = m.client.Publish(context.Background(), m.updateChannel(), jsonBytes).Err(); err != nil {
-		glog.Error("redis owner update notify event", zap.Error(err))
+		m.logger.Error("redis owner update notify event", zap.Error(err))
 		return
 	}
 }

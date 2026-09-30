@@ -24,6 +24,7 @@ func (n *Node) bootstrapNode() error {
 	}
 
 	n.options = options
+
 	if err := n.initializeLogger(); err != nil {
 		return fmt.Errorf("node bootstrap %w", err)
 	}
@@ -34,24 +35,42 @@ func (n *Node) bootstrapNode() error {
 	}
 	n.cluster = options.Cluster
 	if n.cluster == nil {
-		n.cluster = cluster.New(instance, func(nodeID string, data []byte) error {
+		n.cluster = cluster.NewWithOptions(instance, func(nodeID string, data []byte) error {
 			return n.system.OnMessage(nodeID, data)
-		})
+		}, cluster.Options{Logger: n.logger})
 	}
 
 	n.system = options.System
 	if n.system == nil {
-		n.system = actor.NewSystem(n.GetID(), n.cluster)
+		n.system = actor.NewSystemWithOptions(actor.SystemOptions{NodeID: n.GetID(), RemoteSender: n.cluster, Logger: n.logger})
 	}
 
 	n.logicalActorRouter = options.LogicalActorRouter
 	if n.logicalActorRouter == nil && options.LogicalActorDirectory != nil {
-		n.logicalActorRouter = logicalactor.New(newLogicalActorNode(instance), n.system, NewActorNodeAdapter(n.cluster))
+		n.logicalActorRouter = logicalactor.New(newLogicalActorNode(instance), n.system, NewActorNodeAdapter(n.cluster), n.logger)
 	}
 
 	if n.logicalActorRouter != nil {
 		n.logicalActorRouter.SetDirectory(n.options.LogicalActorDirectory)
 	}
+	return nil
+}
+
+func (n *Node) initializeLogger() error {
+	loggerOptions := []zap.Option{
+		zap.Fields(
+			zap.String("node_id", n.GetID()),
+			zap.String("node_kind", n.GetKind()),
+		),
+	}
+	if n.options.PanicHook != nil {
+		loggerOptions = append(loggerOptions, zap.WithPanicHook(n.options.PanicHook))
+	}
+	logger, err := glog.New(n.options.Logger, loggerOptions...)
+	if err != nil {
+		return fmt.Errorf("node logger: %w", err)
+	}
+	n.logger = logger
 	return nil
 }
 
@@ -74,19 +93,6 @@ func (n *Node) buildServiceInstance() (member.ServiceInstance, error) {
 	}, nil
 }
 
-func (n *Node) initializeLogger() error {
-	options := []zap.Option{
-		zap.Fields(
-			zap.String("node_id", n.GetID()),
-			zap.String("node_kind", n.GetKind()),
-		),
-	}
-	if n.options.PanicHook != nil {
-		options = append(options, zap.WithPanicHook(n.options.PanicHook))
-	}
-	return glog.Init(n.options.Logger, options...)
-}
-
 func (n *Node) registerCoreComponents() error {
 	components := make([]component.IComponent, 0, len(n.options.Components)+3)
 	components = append(components, n.options.Components...)
@@ -107,7 +113,7 @@ func (n *Node) Startup() (err error) {
 	if err = n.start(); err != nil {
 		return err
 	}
-	glog.Info("node started",
+	n.logger.Info("node started",
 		zap.String("instanceId", n.GetInstanceID()),
 		zap.String("cluster_address", n.GetClusterAddress()),
 		zap.Int("process_id", os.Getpid()),
@@ -123,7 +129,7 @@ func (n *Node) wait() {
 
 	select {
 	case receivedSignal := <-signals:
-		glog.Info("node shutdown signal received", zap.String("signal", receivedSignal.String()))
+		n.logger.Info("node shutdown signal received", zap.String("signal", receivedSignal.String()))
 	}
 }
 
@@ -154,7 +160,7 @@ func (n *Node) initializeComponents() error {
 			err = fmt.Errorf("init component:%s :%w", component.GetName(), err)
 			return false
 		}
-		glog.Info("component initialized", zap.String("component", component.GetName()))
+		n.logger.Info("component initialized", zap.String("component", component.GetName()))
 		return true
 	})
 	if err != nil {
@@ -175,7 +181,7 @@ func (n *Node) startComponents() error {
 			err = fmt.Errorf("start component:%s :%w", component.GetName(), err)
 			return false
 		}
-		glog.Info("component started", zap.String("component", component.GetName()))
+		n.logger.Info("component started", zap.String("component", component.GetName()))
 		return true
 	})
 
@@ -192,7 +198,7 @@ func (n *Node) stopComponents() error {
 		if err = component.Stop(); err != nil {
 			err = errors.Join(fmt.Errorf("stop component %q  %w", component.GetName(), err))
 		} else {
-			glog.Info("component stopped", zap.String("component", component.GetName()))
+			n.logger.Info("component stopped", zap.String("component", component.GetName()))
 		}
 		return true
 	})
@@ -209,9 +215,8 @@ func (n *Node) shutdown() {
 	}
 
 	n.options.Behavior.OnStop(n, shutdownErr)
-	glog.Info("node stopped", zap.Error(shutdownErr))
+	n.logger.Info("node stopped", zap.Error(shutdownErr))
 	n.phase = phaseStopped
 
-	_ = glog.Stop()
 	return
 }

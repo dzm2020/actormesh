@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/dzm2020/actormesh/pkg/glog"
 	"github.com/dzm2020/actormesh/pkg/grs"
 	"sync"
 
@@ -60,7 +59,7 @@ func (r *registration) join(instance ServiceInstance) error {
 		r.runKeeper(ctx, serviceId)
 	})
 
-	glog.Info("consul service joined",
+	r.registry.logger.Info("consul service joined",
 		zap.String("serviceId", serviceId),
 		zap.String("serviceName", instance.Name))
 
@@ -85,7 +84,7 @@ func (r *registration) runKeeper(ctx context.Context, serviceId string) {
 func (r *registration) keepAlive(ctx context.Context, serviceId string) {
 	client := r.registry.client
 	if serviceId == "" {
-		glog.Error("consul service keepAlive", zap.String("serviceId", serviceId))
+		r.registry.logger.Error("consul service keepAlive", zap.String("serviceId", serviceId))
 		return
 	}
 	checkID := serviceCheckID(serviceId)
@@ -93,7 +92,7 @@ func (r *registration) keepAlive(ctx context.Context, serviceId string) {
 		return
 	}
 	if err := client.Agent().UpdateTTL(checkID, "", api.HealthPassing); err != nil {
-		glog.Error("consul service keepAlive", zap.String("serviceId", serviceId), zap.Error(err))
+		r.registry.logger.Error("consul service keepAlive", zap.String("serviceId", serviceId), zap.Error(err))
 		return
 	}
 	return
@@ -122,6 +121,6 @@ func (r *registration) leave(serviceId string) error {
 		return err
 	}
 
-	glog.Info("consul service leave", zap.String("serviceId", serviceId))
+	r.registry.logger.Info("consul service leave", zap.String("serviceId", serviceId))
 	return nil
 }

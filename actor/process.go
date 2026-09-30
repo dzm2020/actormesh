@@ -2,7 +2,6 @@ package actor
 
 import (
 	"fmt"
-	"github.com/dzm2020/actormesh/pkg/glog"
 	"github.com/dzm2020/actormesh/pkg/timer"
 	"sync"
 	"sync/atomic"
@@ -17,7 +16,7 @@ type stopEnvelopeMessage struct{}
 
 func newActorProcess(system *System, handler Actor, options SpawnOptions) *Process {
 	pid := NewPID(system.nextId(), options.Name, system.GetNodeID())
-	logger := glog.With(zap.Uint64("actor_id", pid.ActorID),
+	logger := system.logger.With(zap.Uint64("actor_id", pid.ActorID),
 		zap.String("actor_name", pid.ActorName),
 	)
 	ctx := newActorContext(system, pid, handler, logger, options)

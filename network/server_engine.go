@@ -2,9 +2,9 @@ package network
 
 import (
 	"context"
-	"github.com/dzm2020/actormesh/pkg/glog"
 	"net"
 
+	"github.com/dzm2020/actormesh/pkg/glog"
 	"go.uber.org/zap"
 )
 
@@ -16,7 +16,7 @@ type endpoint interface {
 type openFun func() (endpoint, error)
 type runFun func(e endpoint)
 
-func runEngine(ctx context.Context, open openFun, run runFun) error {
+func runEngine(ctx context.Context, open openFun, run runFun, logger *glog.Logger) error {
 	ctx = normalizeContext(ctx)
 	listener, err := open()
 	if err != nil {
@@ -25,10 +25,10 @@ func runEngine(ctx context.Context, open openFun, run runFun) error {
 	context.AfterFunc(ctx, func() {
 		_ = listener.Close()
 	})
-	glog.Info("server running", zap.String("address", listener.Addr().String()))
+	logger.Info("server running", zap.String("address", listener.Addr().String()))
 
 	run(listener)
 
-	glog.Info("server stopped", zap.String("address", listener.Addr().String()))
+	logger.Info("server stopped", zap.String("address", listener.Addr().String()))
 	return nil
 }

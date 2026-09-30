@@ -3,17 +3,17 @@ package logicalactor
 import (
 	"errors"
 	"fmt"
+	"strings"
+	"sync"
+
 	"github.com/dzm2020/actormesh/actor"
 	logicalactorpb "github.com/dzm2020/actormesh/logicalactor/pb"
 	"github.com/dzm2020/actormesh/pkg/component"
 	"github.com/dzm2020/actormesh/pkg/glog"
 	"github.com/dzm2020/actormesh/pkg/serialize/protocodec"
-	"strings"
-	"sync"
 
 	"github.com/duke-git/lancet/v2/maputil"
 
-	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -25,16 +25,29 @@ const maxOwnerResolveAttempts = 3
 
 var ErrLogicalActorRouterNotStarted = errors.New("logical actor router is not started")
 
-func New(local NodeInfo, actorSystem actor.RouterRuntime, discovery Discovery) ActorRouter {
+type Options struct {
+	Local     NodeInfo
+	System    actor.RouterRuntime
+	Discovery Discovery
+	Logger    *glog.Logger
+}
+
+func (m *Options) logger() *glog.Logger {
+	if m.Logger == nil {
+		return glog.Log()
+	}
+	return m.Logger
+}
+func New(options Options) ActorRouter {
 	router := &Router{
-		local:       local,
-		discovery:   discovery,
-		actorSystem: actorSystem,
+		local:       options.Local,
+		discovery:   options.Discovery,
+		actorSystem: options.System,
 		placements:  maputil.NewConcurrentMap[string, PlacementStrategy](10),
 		factories:   maputil.NewConcurrentMap[string, ActorFactory](10),
+		logger:      options.Logger,
 	}
 	router.SetName("logicalactor")
-	router.logger = glog.With(zap.String("component", router.GetName()))
 	return router
 }
 
@@ -50,7 +63,7 @@ type Router struct {
 	factories   *maputil.ConcurrentMap[string, ActorFactory]
 	routerPIDMu sync.Mutex
 	routerPID   *actor.PID
-	logger      *zap.Logger
+	logger      *glog.Logger
 }
 
 func (router *Router) localNodeID() string {

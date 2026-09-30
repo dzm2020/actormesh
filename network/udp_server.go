@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/dzm2020/actormesh/network/protocol"
-	"github.com/dzm2020/actormesh/pkg/glog"
 	"github.com/dzm2020/actormesh/pkg/grs"
 	"github.com/dzm2020/actormesh/pkg/netutil"
 	"net"
@@ -48,13 +47,14 @@ type UDPServer struct {
 }
 
 func (s *UDPServer) Run(ctx context.Context, handler TransportHandler) error {
+	logger := s.config.Logger
 	return runEngine(ctx, func() (endpoint, error) {
 		//  监听地址
 		listener, err := net.ListenPacket("udp", s.config.Address)
 		if err != nil {
 			return nil, fmt.Errorf("udp server :%w", err)
 		}
-		glog.Info("udp server listener created", zap.String("address", listener.LocalAddr().String()))
+		logger.Info("udp server listener created", zap.String("address", listener.LocalAddr().String()))
 		return &udpEndpoint{PacketConn: listener}, nil
 	},
 		func(e endpoint) {
@@ -70,7 +70,7 @@ func (s *UDPServer) Run(ctx context.Context, handler TransportHandler) error {
 				n, remoteAddr, err := conn.ReadFromUDP(buf)
 				if err != nil {
 					if !errors.Is(err, net.ErrClosed) {
-						glog.Error("udp server read udp failed", zap.Error(err))
+						logger.Error("udp server read udp failed", zap.Error(err))
 					}
 					break
 				}
@@ -81,14 +81,16 @@ func (s *UDPServer) Run(ctx context.Context, handler TransportHandler) error {
 				bytes := append([]byte(nil), buf[:n]...)
 				s.transmit(handler, remoteAddr, bytes)
 			}
-		})
+		}, logger)
 }
 
 func (s *UDPServer) transmit(handler TransportHandler, remoteAddr *net.UDPAddr, bytes []byte) {
 	var udpConn *UDPConnection
 	header, err := protocol.DecodeUDPHeader(bytes)
 	if err != nil {
-		glog.Error("udp server decode  header failed", zap.Error(err))
+		if s.config.Logger != nil {
+			s.config.Logger.Error("udp server decode header failed", zap.Error(err))
+		}
 		return
 	}
 	remoteAddr = netutil.CloneUDPAddr(remoteAddr)
@@ -125,7 +127,9 @@ func (s *UDPServer) writeLoop(ctx context.Context, conn *net.UDPConn) {
 		case packet, _ := <-s.sendChannel:
 			_, err := conn.WriteToUDP(packet.data, packet.remoteAddr)
 			if err != nil && !errors.Is(err, net.ErrClosed) {
-				glog.Error("udp server write failed", zap.Error(err))
+				if s.config.Logger != nil {
+					s.config.Logger.Error("udp server write failed", zap.Error(err))
+				}
 			}
 		}
 	}

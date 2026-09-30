@@ -9,6 +9,7 @@ import (
 	"github.com/dzm2020/actormesh/cluster"
 	"github.com/dzm2020/actormesh/logicalactor"
 	"github.com/dzm2020/actormesh/pkg/component"
+	"github.com/dzm2020/actormesh/pkg/glog"
 )
 
 var _ NodeAPI = (*Node)(nil)
@@ -47,6 +48,7 @@ type Node struct {
 	system             actor.SystemAPI
 	cluster            cluster.ClusterAPI
 	logicalActorRouter logicalactor.ActorRouter
+	logger             *glog.Logger
 	phase              phase
 }
 

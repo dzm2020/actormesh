@@ -4,14 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync/atomic"
+	"time"
+
 	"github.com/dzm2020/actormesh/network/encrypt"
 	"github.com/dzm2020/actormesh/network/protocol"
 	"github.com/dzm2020/actormesh/pkg/buffer"
 	"github.com/dzm2020/actormesh/pkg/glog"
 	"github.com/dzm2020/actormesh/pkg/grs"
 	"github.com/dzm2020/actormesh/pkg/timer"
-	"sync/atomic"
-	"time"
 
 	"go.uber.org/zap"
 )
@@ -47,7 +48,7 @@ type baseConn struct {
 	ctx            context.Context
 	cancel         context.CancelFunc
 	group          *grs.Group
-	logger         *zap.Logger
+	logger         *glog.Logger
 	conn           connCore // 子类接口实现
 	closeErr       error
 	handshakeTimer atomic.Pointer[timer.Timer]
@@ -55,7 +56,7 @@ type baseConn struct {
 
 func (b *baseConn) bind(conn connCore) {
 	b.conn = conn
-	b.logger = glog.With(zap.Int64("connId", conn.ID()),
+	b.logger = b.options.Logger.With(zap.Int64("connId", conn.ID()),
 		zap.Uint8("role", uint8(conn.Role())),
 		zap.String("network", conn.Network()),
 		zap.String("remoteAddr", conn.RemoteAddr()),
@@ -95,7 +96,7 @@ func (b *baseConn) Role() ConnectionRole {
 	return b.role
 }
 
-func (b *baseConn) Log() *zap.Logger {
+func (b *baseConn) Log() *glog.Logger {
 	return b.logger
 }
 

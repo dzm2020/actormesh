@@ -3,13 +3,14 @@ package gateway
 import (
 	"errors"
 	"fmt"
-	"github.com/dzm2020/actormesh/pkg/serialize/protocodec"
 	"reflect"
 	"sync"
 
+	"github.com/dzm2020/actormesh/pkg/glog"
+	"github.com/dzm2020/actormesh/pkg/serialize/protocodec"
+
 	"github.com/dzm2020/actormesh/actor"
 	"github.com/dzm2020/actormesh/network/protocol"
-	"github.com/dzm2020/actormesh/pkg/glog"
 
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
@@ -41,13 +42,18 @@ type Route struct {
 	mu       sync.RWMutex
 	handlers map[uint16]routeEntry
 	outbound map[string]uint16
+	logger   *glog.Logger
 }
 
 // NewRoute 创建空路由表。
-func NewRoute() *Route {
+func NewRoute(logger *glog.Logger) *Route {
+	if logger == nil {
+		logger = glog.Log()
+	}
 	return &Route{
 		handlers: make(map[uint16]routeEntry),
 		outbound: make(map[string]uint16),
+		logger:   logger,
 	}
 }
 
@@ -68,7 +74,7 @@ func (r *Route) registerC2S(id uint16, handler RouteHandler, c2s proto.Message) 
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if _, exists := r.handlers[id]; exists {
-		glog.Warn("c2s already registered", zap.Uint16("id", id))
+		r.logger.Warn("c2s already registered", zap.Uint16("id", id))
 		return
 	}
 	r.handlers[id] = routeEntry{
@@ -86,7 +92,7 @@ func (r *Route) registerS2C(id uint16, s2c proto.Message) {
 	defer r.mu.Unlock()
 	s2cName := string(s2c.ProtoReflect().Descriptor().FullName())
 	if existing, exists := r.outbound[s2cName]; exists {
-		glog.Warn("s2c already registered", zap.Uint16("id", id), zap.Uint16("existing", existing))
+		r.logger.Warn("s2c already registered", zap.Uint16("id", id), zap.Uint16("existing", existing))
 		return
 	}
 	r.outbound[s2cName] = id
@@ -111,7 +117,7 @@ func (r *Route) Handle(agent ClientAgent, ctx actor.Context, message *protocol.M
 		return fmt.Errorf("agent route handle err:%w", err)
 	}
 
-	glog.Debug("agent route handle", zap.Uint8("cmd", message.Cmd), zap.Uint8("act", message.Act))
+	r.logger.Debug("agent route handle", zap.Uint8("cmd", message.Cmd), zap.Uint8("act", message.Act))
 	return nil
 }
 

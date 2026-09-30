@@ -28,16 +28,31 @@ type ActorGateway interface {
 
 type AgentSpawner func(network.Connection) (*actor.PID, error)
 
-func New(server network.Server, system ActorGateway, spawner AgentSpawner) *Gateway {
+type Options struct {
+	Logger  *glog.Logger
+	Server  network.Server
+	System  ActorGateway
+	spawner AgentSpawner
+}
+
+func (m *Options) logger() *glog.Logger {
+	if m.Logger == nil {
+		return glog.Log()
+	}
+	return m.Logger
+}
+
+func New(options Options) *Gateway {
 	gateway := &Gateway{
-		server:  server,
-		system:  system,
-		spawner: spawner,
+		server:  options.Server,
+		system:  options.System,
+		spawner: options.spawner,
 		pids:    maputil.NewConcurrentMap[int64, *actor.PID](10),
+		logger:  options.logger(),
 	}
 	gateway.ctx, gateway.cancel = context.WithCancel(context.Background())
 	gateway.SetName("gateway")
-	gateway.logger = glog.With(zap.String("component", gateway.GetName()))
+	gateway.logger = gateway.logger.With(zap.String("component", gateway.GetName()))
 	return gateway
 }
 
@@ -48,7 +63,7 @@ type Gateway struct {
 	server   network.Server
 	system   ActorGateway
 	spawner  AgentSpawner
-	logger   *zap.Logger
+	logger   *glog.Logger
 	pids     *maputil.ConcurrentMap[int64, *actor.PID]
 	group    sync.WaitGroup
 	acceptMu sync.RWMutex
@@ -72,7 +87,7 @@ func (g *Gateway) Start() error {
 	return g.GuardStart(func() error {
 		grs.SafeGo(func() {
 			if err := g.server.Run(g.ctx, &connectionHandler{gateway: g}); err != nil {
-				glog.Error("gateway run server err", zap.Error(err))
+				g.logger.Error("gateway run server err", zap.Error(err))
 			}
 		})
 		return nil

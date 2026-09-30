@@ -3,6 +3,9 @@ package cluster
 import (
 	"context"
 	"errors"
+	"sync"
+	"time"
+
 	"github.com/dzm2020/actormesh/cluster/member"
 	memberconsul "github.com/dzm2020/actormesh/cluster/member/consul"
 	"github.com/dzm2020/actormesh/cluster/transport"
@@ -11,8 +14,6 @@ import (
 	"github.com/dzm2020/actormesh/pkg/glog"
 	"github.com/dzm2020/actormesh/pkg/grs"
 	"github.com/dzm2020/actormesh/pkg/netutil"
-	"sync"
-	"time"
 
 	"go.uber.org/zap"
 )
@@ -22,6 +23,14 @@ var _ ClusterAPI = (*Cluster)(nil)
 type Options struct {
 	MemberManager member.MemberManager
 	Transport     transport.Transport
+	Logger        *glog.Logger
+}
+
+func (m *Options) logger() *glog.Logger {
+	if m.Logger == nil {
+		return glog.Log()
+	}
+	return m.Logger
 }
 
 func New(instance member.ServiceInstance, handler MessageHandler) *Cluster {
@@ -34,16 +43,21 @@ func NewWithOptions(instance member.ServiceInstance, handler MessageHandler, opt
 		local:         instance,
 		memberManager: options.MemberManager,
 		transport:     options.Transport,
+		logger:        options.logger(),
 	}
 	if c.memberManager == nil {
-		c.memberManager = memberconsul.New()
+		c.memberManager = memberconsul.NewWithOptions(memberconsul.Options{Logger: options.logger()})
 	}
 	if c.transport == nil {
-		c.transport = transportnet.NewTransport(c.local.ID)
+		c.transport = transportnet.NewTransportWithOptions(transportnet.Options{
+			LocalNodeID: instance.ID,
+			TcpConfig:   nil,
+			Logger:      c.logger,
+		})
 	}
 	c.ctx, c.cancel = context.WithCancel(context.Background())
 	c.SetName("cluster")
-	c.logger = glog.With(zap.String("component", c.GetName()))
+	c.logger = c.logger.With(zap.String("component", c.GetName()))
 	return c
 }
 
@@ -53,7 +67,7 @@ type Cluster struct {
 	memberManager member.MemberManager // 集群发现器
 	transport     transport.Transport
 	handler       MessageHandler
-	logger        *zap.Logger
+	logger        *glog.Logger
 	ctx           context.Context
 	cancel        context.CancelFunc
 	leaveOnce     sync.Once
@@ -82,7 +96,7 @@ func (c *Cluster) Start() error {
 			address := netutil.EndpointAddress(c.local.Address, c.local.Port)
 			if err := c.transport.ListenAndServe(address, transport.MessageHandler(c.handler)); err != nil {
 				_ = c.Leave()
-				glog.Error("cluster listen failed", zap.Error(err))
+				c.logger.Error("cluster listen failed", zap.Error(err))
 				return
 			}
 		})

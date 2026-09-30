@@ -3,6 +3,7 @@ package consul
 import (
 	"time"
 
+	"github.com/dzm2020/actormesh/pkg/glog"
 	"github.com/hashicorp/consul/api"
 )
 
@@ -22,6 +23,14 @@ type Options struct {
 
 	TTL             time.Duration
 	DeregisterAfter time.Duration
+	Logger          *glog.Logger
+}
+
+func (m *Options) logger() *glog.Logger {
+	if m.Logger == nil {
+		return glog.Log()
+	}
+	return m.Logger
 }
 
 func DefaultOptions() Options {

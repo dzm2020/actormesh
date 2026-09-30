@@ -3,7 +3,6 @@ package consul
 import (
 	"context"
 	"fmt"
-	"github.com/dzm2020/actormesh/pkg/glog"
 	"github.com/dzm2020/actormesh/pkg/grs"
 	"sort"
 	"time"
@@ -46,7 +45,7 @@ func (w *watcher) watchCatalog(ctx context.Context) {
 		}
 		services, meta, err := w.services(lastIndex)
 		if err != nil {
-			glog.Warn("consul catalog watch failed, retrying", zap.Error(err))
+			w.registry.logger.Warn("consul catalog watch failed, retrying", zap.Error(err))
 			if !sleepContext(ctx, defaultWatchRetryDelay) {
 				return
 			}
@@ -121,7 +120,7 @@ func (w *watcher) watchService(ctx context.Context, service string) {
 		}
 		instances, meta, err := w.fetchService(service, lastIndex)
 		if err != nil {
-			glog.Warn("consul service watch failed, retrying",
+			w.registry.logger.Warn("consul service watch failed, retrying",
 				zap.String("service", service),
 				zap.Error(err),
 			)

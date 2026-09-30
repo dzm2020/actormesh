@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/dzm2020/actormesh/pkg/glog"
 	"net"
 
 	"go.uber.org/zap"
@@ -22,6 +21,7 @@ type TCPServer struct {
 }
 
 func (s *TCPServer) Run(ctx context.Context, handler TransportHandler) error {
+	logger := s.config.Logger
 	return runEngine(ctx,
 		func() (endpoint, error) {
 			//  监听地址
@@ -29,7 +29,7 @@ func (s *TCPServer) Run(ctx context.Context, handler TransportHandler) error {
 			if err != nil {
 				return nil, fmt.Errorf("tcp server  :%w", err)
 			}
-			glog.Info("tcp server listener created", zap.String("address", listener.Addr().String()))
+			logger.Info("tcp server listener created", zap.String("address", listener.Addr().String()))
 			return listener, nil
 		},
 		func(e endpoint) {
@@ -40,14 +40,14 @@ func (s *TCPServer) Run(ctx context.Context, handler TransportHandler) error {
 					if errors.Is(err, net.ErrClosed) {
 						break
 					}
-					glog.Error("tcp server accept failed", zap.Error(err))
+					logger.Error("tcp server accept failed", zap.Error(err))
 					continue
 				}
 
 				tcpCon, ok := conn.(*net.TCPConn)
 				if !ok {
 					_ = conn.Close()
-					glog.Error("tcp server accepted unexpected connection type",
+					logger.Error("tcp server accepted unexpected connection type",
 						zap.String("type", fmt.Sprintf("%T", conn)), zap.Error(ErrUnexpectedTCPConnType))
 					continue
 				}
@@ -55,5 +55,5 @@ func (s *TCPServer) Run(ctx context.Context, handler TransportHandler) error {
 				connection := newTCPConnection(handler, tcpCon, s.config, ConnectionRoleServer)
 				_ = connection.runStart()
 			}
-		})
+		}, logger)
 }

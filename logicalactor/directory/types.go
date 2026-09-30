@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/dzm2020/actormesh/logicalactor"
+	"github.com/dzm2020/actormesh/pkg/glog"
 )
 
 type RedisOwnerDirectoryOptions struct {
@@ -12,6 +13,14 @@ type RedisOwnerDirectoryOptions struct {
 	LeaseTTL  time.Duration
 	CacheSize int
 	CacheTTL  time.Duration
+	Logger    *glog.Logger
+}
+
+func (m *RedisOwnerDirectoryOptions) logger() *glog.Logger {
+	if m.Logger == nil {
+		return glog.Log()
+	}
+	return m.Logger
 }
 
 type ownerEvent struct {

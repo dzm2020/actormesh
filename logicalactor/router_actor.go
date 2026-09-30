@@ -7,7 +7,6 @@ import (
 
 	"github.com/dzm2020/actormesh/actor"
 	logicalactorpb "github.com/dzm2020/actormesh/logicalactor/pb"
-	"github.com/dzm2020/actormesh/pkg/glog"
 
 	"go.uber.org/zap"
 )
@@ -114,7 +113,7 @@ func (r *RouterActor) routeMessage(ctx actor.Context, request *logicalactorpb.Ro
 	actorPID, err := r.activateActor(actorId, owner)
 	if err != nil {
 		if _, deleteErr := r.router.directory.DeleteOwner(actorId, owner); deleteErr != nil {
-			glog.Error("logical actor owner cleanup failed", zap.String("actor_id", actorId.String()), zap.Error(deleteErr))
+			r.router.logger.Error("logical actor owner cleanup failed", zap.String("actor_id", actorId.String()), zap.Error(deleteErr))
 		}
 		return fmt.Errorf("activate actor :%w", err)
 	}
