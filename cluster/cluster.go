@@ -7,9 +7,7 @@ import (
 	"time"
 
 	"github.com/dzm2020/actormesh/cluster/member"
-	memberconsul "github.com/dzm2020/actormesh/cluster/member/consul"
 	"github.com/dzm2020/actormesh/cluster/transport"
-	transportnet "github.com/dzm2020/actormesh/cluster/transport/nettransport"
 	"github.com/dzm2020/actormesh/pkg/component"
 	"github.com/dzm2020/actormesh/pkg/glog"
 	"github.com/dzm2020/actormesh/pkg/grs"
@@ -21,8 +19,8 @@ import (
 var _ ClusterAPI = (*Cluster)(nil)
 
 type Options struct {
-	MemberManager member.MemberManager
-	Transport     transport.Transport
+	MemberManager member.MemberManagerAPI
+	Transport     transport.TransportAPI
 	Logger        *glog.Logger
 }
 
@@ -45,16 +43,7 @@ func NewWithOptions(instance member.ServiceInstance, handler MessageHandler, opt
 		transport:     options.Transport,
 		logger:        options.logger(),
 	}
-	if c.memberManager == nil {
-		c.memberManager = memberconsul.NewWithOptions(memberconsul.Options{Logger: options.logger()})
-	}
-	if c.transport == nil {
-		c.transport = transportnet.NewTransportWithOptions(transportnet.Options{
-			LocalNodeID: instance.ID,
-			TcpConfig:   nil,
-			Logger:      c.logger,
-		})
-	}
+
 	c.ctx, c.cancel = context.WithCancel(context.Background())
 	c.SetName("cluster")
 	c.logger = c.logger.With(zap.String("component", c.GetName()))
@@ -64,8 +53,8 @@ func NewWithOptions(instance member.ServiceInstance, handler MessageHandler, opt
 type Cluster struct {
 	component.BaseComponent
 	local         member.ServiceInstance
-	memberManager member.MemberManager // 集群发现器
-	transport     transport.Transport
+	memberManager member.MemberManagerAPI // 集群发现器
+	transport     transport.TransportAPI
 	handler       MessageHandler
 	logger        *glog.Logger
 	ctx           context.Context
@@ -75,6 +64,12 @@ type Cluster struct {
 
 func (c *Cluster) Init() error {
 	return c.GuardInit(func() error {
+		if c.memberManager == nil {
+			return errors.New("cluster member manager is nil")
+		}
+		if c.transport == nil {
+			return errors.New("cluster transport is nil")
+		}
 		if c.handler == nil {
 			return errors.New("cluster handler is nil")
 		}

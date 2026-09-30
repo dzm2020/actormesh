@@ -15,7 +15,7 @@ import (
 
 type ServiceInstance = member.ServiceInstance
 
-var _ member.MemberManager = (*Registry)(nil)
+var _ member.MemberManagerAPI = (*Registry)(nil)
 
 func New() *Registry {
 	return NewWithOptions(Options{})

@@ -11,7 +11,7 @@ type Discovery interface {
 	MemberById(serviceID string) (ServiceInstance, bool)
 }
 
-type MemberManager interface {
+type MemberManagerAPI interface {
 	Discovery
 	Run(ctx context.Context) error
 	Join(instance ServiceInstance) error

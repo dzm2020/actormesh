@@ -10,6 +10,8 @@ import (
 	"github.com/dzm2020/actormesh/actor"
 	"github.com/dzm2020/actormesh/cluster"
 	"github.com/dzm2020/actormesh/cluster/member"
+	memberconsul "github.com/dzm2020/actormesh/cluster/member/consul"
+	transportnet "github.com/dzm2020/actormesh/cluster/transport/nettransport"
 	"github.com/dzm2020/actormesh/logicalactor"
 	"github.com/dzm2020/actormesh/pkg/component"
 	"github.com/dzm2020/actormesh/pkg/glog"
@@ -24,62 +26,88 @@ func (n *Node) bootstrapNode() error {
 	}
 
 	n.options = options
-
-	if err := n.initializeLogger(); err != nil {
-		return fmt.Errorf("node bootstrap %w", err)
+	logger, err := n.initializeLogger()
+	if err != nil {
+		return err
 	}
-
+	n.logger = logger
 	instance, err := n.buildServiceInstance()
 	if err != nil {
-		return fmt.Errorf("node bootstrap %w", err)
-	}
-	n.cluster = options.Cluster
-	if n.cluster == nil {
-		n.cluster = cluster.NewWithOptions(instance, func(nodeID string, data []byte) error {
-			return n.system.OnMessage(nodeID, data)
-		}, cluster.Options{Logger: n.logger})
+		return err
 	}
 
-	n.system = options.System
-	if n.system == nil {
-		n.system = actor.NewSystemWithOptions(actor.SystemOptions{
-			NodeID:       n.GetID(),
-			RemoteSender: n.cluster,
-			Logger:       n.logger,
-		})
-	}
-
-	n.logicalActorRouter = options.LogicalActorRouter
-	if n.logicalActorRouter == nil && options.LogicalActorDirectory != nil {
-		n.logicalActorRouter = logicalactor.New(logicalactor.Options{
-			Local:     newLogicalActorNode(instance),
-			System:    n.system,
-			Discovery: NewActorNodeAdapter(n.cluster),
-			Logger:    n.logger,
-		})
-	}
-	if n.logicalActorRouter != nil {
-		n.logicalActorRouter.SetDirectory(n.options.LogicalActorDirectory)
-	}
+	n.cluster = n.initializeCluster(instance)
+	n.system = n.initializeSystem(n.cluster)
+	n.logicalActorRouter = n.initializeActorRoute(instance, n.cluster, n.system)
 	return nil
 }
 
-func (n *Node) initializeLogger() error {
-	loggerOptions := []zap.Option{
+func (n *Node) initializeLogger() (*glog.Logger, error) {
+	options := []zap.Option{
 		zap.Fields(
 			zap.String("node_id", n.GetID()),
 			zap.String("node_kind", n.GetKind()),
 		),
 	}
 	if n.options.PanicHook != nil {
-		loggerOptions = append(loggerOptions, zap.WithPanicHook(n.options.PanicHook))
+		options = append(options, zap.WithPanicHook(n.options.PanicHook))
 	}
-	logger, err := glog.New(n.options.Logger, loggerOptions...)
+	logger, err := glog.New(n.options.Logger, options...)
 	if err != nil {
-		return fmt.Errorf("node logger: %w", err)
+		return nil, fmt.Errorf("node logger: %w", err)
 	}
-	n.logger = logger
-	return nil
+	return logger, nil
+}
+
+func (n *Node) initializeSystem(cluster cluster.ClusterAPI) actor.SystemAPI {
+	if n.options.System != nil {
+		return n.options.System
+	}
+	return actor.NewSystemWithOptions(actor.SystemOptions{
+		NodeID:       n.GetID(),
+		RemoteSender: cluster,
+		Logger:       n.logger,
+	})
+}
+
+func (n *Node) initializeCluster(instance member.ServiceInstance) cluster.ClusterAPI {
+	if n.options.Cluster != nil {
+		return n.options.Cluster
+	}
+	memberManager := n.options.MemberManager
+	if memberManager == nil {
+		memberManager = memberconsul.NewWithOptions(memberconsul.Options{Logger: n.logger})
+	}
+
+	transport := n.options.Transport
+	if transport == nil {
+		transport = transportnet.NewTransportWithOptions(transportnet.Options{
+			LocalNodeID: instance.ID,
+			Logger:      n.logger,
+		})
+	}
+	handler := func(nodeID string, data []byte) error {
+		return n.system.OnMessage(nodeID, data)
+	}
+	return cluster.NewWithOptions(instance, handler, cluster.Options{
+		Logger:        n.logger,
+		MemberManager: memberManager,
+		Transport:     transport,
+	})
+}
+
+func (n *Node) initializeActorRoute(instance member.ServiceInstance, cluster cluster.ClusterAPI, system actor.SystemAPI) logicalactor.ActorRouter {
+	route := n.options.LogicalActorRouter
+	if route == nil {
+		route = logicalactor.New(logicalactor.Options{
+			Local:     newLogicalActorNode(instance),
+			System:    system,
+			Discovery: NewActorNodeAdapter(cluster),
+			Logger:    n.logger,
+		})
+	}
+	route.SetDirectory(n.options.LogicalActorDirectory)
+	return route
 }
 
 func (n *Node) buildServiceInstance() (member.ServiceInstance, error) {
@@ -143,7 +171,7 @@ func (n *Node) wait() {
 
 func (n *Node) start() error {
 	if err := n.bootstrapNode(); err != nil {
-		return err
+		return fmt.Errorf("node boot %w", err)
 	}
 	if err := n.registerCoreComponents(); err != nil {
 		return fmt.Errorf("register components :%w", err)

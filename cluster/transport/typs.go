@@ -14,7 +14,7 @@ const (
 	PeerStateConnected
 )
 
-type Transport interface {
+type TransportAPI interface {
 	ListenAndServe(address string, handler MessageHandler) error
 	Connect(nodeId string, address string, handler MessageHandler, timeout time.Duration) error
 	ConnectionState(nodeId string) PeerState

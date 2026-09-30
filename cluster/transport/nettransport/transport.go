@@ -21,7 +21,7 @@ var (
 	ErrPeerNotConnected = errors.New("rpc peer is not connected")
 )
 
-var _ transport.Transport = (*Transport)(nil)
+var _ transport.TransportAPI = (*Transport)(nil)
 
 type Options struct {
 	LocalNodeID string

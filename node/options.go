@@ -6,6 +6,8 @@ import (
 
 	"github.com/dzm2020/actormesh/actor"
 	"github.com/dzm2020/actormesh/cluster"
+	"github.com/dzm2020/actormesh/cluster/member"
+	"github.com/dzm2020/actormesh/cluster/transport"
 	"github.com/dzm2020/actormesh/logicalactor"
 	"github.com/dzm2020/actormesh/pkg/component"
 	"github.com/dzm2020/actormesh/pkg/glog"
@@ -25,6 +27,8 @@ type Options struct {
 	PanicHook             zapcore.CheckWriteHook
 	System                actor.SystemAPI
 	Cluster               cluster.ClusterAPI
+	MemberManager         member.MemberManagerAPI
+	Transport             transport.TransportAPI
 	LogicalActorRouter    logicalactor.ActorRouter
 	LogicalActorDirectory logicalactor.OwnerDirectory
 	Components            []component.IComponent
