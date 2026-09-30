@@ -44,8 +44,8 @@ func waitTransportState(t *testing.T, tr *Transport, nodeID string, state PeerSt
 
 func TestTransportConnectSendAndClose(t *testing.T) {
 	serverAddress := freeTransportAddress(t)
-	server := NewTransportWithOptions("server", testTransportConfig())
-	client := NewTransportWithOptions("client", testTransportConfig())
+	server := NewTransportWithOptions(Options{LocalNodeID: "server", TcpConfig: testTransportConfig()})
+	client := NewTransportWithOptions(Options{LocalNodeID: "client", TcpConfig: testTransportConfig()})
 	defer server.Close()
 	defer client.Close()
 
@@ -92,7 +92,7 @@ func TestTransportConnectSendAndClose(t *testing.T) {
 }
 
 func TestTransportConnectFailureCleansPeer(t *testing.T) {
-	tr := NewTransportWithOptions("client", testTransportConfig())
+	tr := NewTransportWithOptions(Options{LocalNodeID: "client", TcpConfig: testTransportConfig()})
 	defer tr.Close()
 	address := freeTransportAddress(t)
 	if err := tr.Connect("server", address, func(string, []byte) error { return nil }, 100*time.Millisecond); err == nil {
@@ -122,7 +122,7 @@ func TestTransportCloseCancelsConnect(t *testing.T) {
 
 	config := testTransportConfig()
 	config.EncryptEnable = true
-	tr := NewTransportWithOptions("client", config)
+	tr := NewTransportWithOptions(Options{LocalNodeID: "client", TcpConfig: config})
 	result := make(chan error, 1)
 	go func() {
 		result <- tr.Connect("server", listener.Addr().String(), func(string, []byte) error { return nil }, 30*time.Second)

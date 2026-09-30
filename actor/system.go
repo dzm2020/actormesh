@@ -12,10 +12,6 @@ import (
 	"go.uber.org/zap"
 )
 
-func NewSystem(nodeId string, sender RemoteSender) *System {
-	return NewSystemWithOptions(SystemOptions{NodeID: nodeId, RemoteSender: sender})
-}
-
 type SystemOptions struct {
 	NodeID       string
 	RemoteSender RemoteSender
@@ -28,6 +24,11 @@ func (m *SystemOptions) logger() *glog.Logger {
 	}
 	return m.Logger
 }
+
+func NewSystem(nodeId string, sender RemoteSender) *System {
+	return NewSystemWithOptions(SystemOptions{NodeID: nodeId, RemoteSender: sender})
+}
+
 func NewSystemWithOptions(options SystemOptions) *System {
 	s := &System{
 		nodeID:       options.NodeID,

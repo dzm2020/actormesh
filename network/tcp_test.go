@@ -31,6 +31,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dzm2020/actormesh/pkg/glog"
 	"go.uber.org/zap"
 )
 
@@ -663,7 +664,7 @@ func TestTCPSendChannelFull(t *testing.T) {
 		SendChanSize:     1,
 		WriteTimeout:     time.Second,
 	}, ConnectionRoleServer)
-	conn.logger = zap.NewNop()
+	conn.logger = &glog.Logger{Logger: zap.NewNop()}
 	// 直接置为 Ready：本测试只关心队列与状态判断，不涉及握手。
 	conn.state.Store(uint32(ConnectionStateReady))
 

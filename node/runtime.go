@@ -42,14 +42,22 @@ func (n *Node) bootstrapNode() error {
 
 	n.system = options.System
 	if n.system == nil {
-		n.system = actor.NewSystemWithOptions(actor.SystemOptions{NodeID: n.GetID(), RemoteSender: n.cluster, Logger: n.logger})
+		n.system = actor.NewSystemWithOptions(actor.SystemOptions{
+			NodeID:       n.GetID(),
+			RemoteSender: n.cluster,
+			Logger:       n.logger,
+		})
 	}
 
 	n.logicalActorRouter = options.LogicalActorRouter
 	if n.logicalActorRouter == nil && options.LogicalActorDirectory != nil {
-		n.logicalActorRouter = logicalactor.New(newLogicalActorNode(instance), n.system, NewActorNodeAdapter(n.cluster), n.logger)
+		n.logicalActorRouter = logicalactor.New(logicalactor.Options{
+			Local:     newLogicalActorNode(instance),
+			System:    n.system,
+			Discovery: NewActorNodeAdapter(n.cluster),
+			Logger:    n.logger,
+		})
 	}
-
 	if n.logicalActorRouter != nil {
 		n.logicalActorRouter.SetDirectory(n.options.LogicalActorDirectory)
 	}
