@@ -15,8 +15,8 @@ const (
 )
 
 type TransportAPI interface {
-	ListenAndServe(address string, handler MessageHandler) error
-	Connect(nodeId string, address string, handler MessageHandler, timeout time.Duration) error
+	Run() error
+	Connect(nodeId string, address string, timeout time.Duration) error
 	ConnectionState(nodeId string) PeerState
 	Disconnect(nodeId string) error
 	Send(nodeId string, data []byte) error

@@ -13,9 +13,10 @@ import (
 	"go.uber.org/zap"
 )
 
-type ServiceInstance = member.ServiceInstance
+// ServiceInstance is kept as a compatibility alias for existing Consul users.
+type ServiceInstance = member.NodeInfo
 
-var _ member.MemberManagerAPI = (*Registry)(nil)
+var _ member.RegistryAPI = (*Registry)(nil)
 
 func New() *Registry {
 	return NewWithOptions(Options{})
@@ -69,30 +70,30 @@ func (r *Registry) initClient() error {
 	return nil
 }
 
-func (r *Registry) Join(instance ServiceInstance) error {
-	return r.reg.join(instance)
+func (r *Registry) Join(node member.NodeInfo) error {
+	return r.reg.join(node)
 }
 
 func (r *Registry) Leave(serviceId string) error {
 	return r.reg.leave(serviceId)
 }
 
-func (r *Registry) Update(instance ServiceInstance) error {
-	return r.reg.join(instance)
+func (r *Registry) Update(node member.NodeInfo) error {
+	return r.reg.join(node)
 }
 
-func (r *Registry) Members(service string) map[string]ServiceInstance {
+func (r *Registry) Members(service string) map[string]member.NodeInfo {
 	members, _ := r.watcher.caches.Get(service)
 	//  clone 数据避免并发读写map
-	ret := make(map[string]ServiceInstance)
+	ret := make(map[string]member.NodeInfo)
 	for _, m := range members {
 		ret[m.ID] = m.Clone()
 	}
 	return ret
 }
 
-func (r *Registry) MemberById(serviceId string) (ServiceInstance, bool) {
-	var result ServiceInstance
+func (r *Registry) MemberById(serviceId string) (member.NodeInfo, bool) {
+	var result member.NodeInfo
 	var ok bool
 	r.watcher.caches.Range(func(key string, value map[string]ServiceInstance) bool {
 		result, ok = value[serviceId]
@@ -105,8 +106,8 @@ func (r *Registry) MemberById(serviceId string) (ServiceInstance, bool) {
 	return result.Clone(), ok
 }
 
-func (r *Registry) AllMembers() []ServiceInstance {
-	var result []ServiceInstance
+func (r *Registry) AllMembers() []member.NodeInfo {
+	var result []member.NodeInfo
 	r.watcher.caches.Range(func(key string, dict map[string]ServiceInstance) bool {
 		for _, instance := range dict {
 			result = append(result, instance)

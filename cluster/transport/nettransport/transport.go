@@ -7,6 +7,7 @@ import (
 
 	"github.com/dzm2020/actormesh/network/protocol"
 	"github.com/dzm2020/actormesh/pkg/glog"
+	"github.com/dzm2020/actormesh/pkg/grs"
 
 	"time"
 
@@ -27,6 +28,8 @@ type Options struct {
 	LocalNodeID string
 	TcpConfig   *network.TCPConfig
 	Logger      *glog.Logger
+	ListenAddr  string
+	Handler     transport.MessageHandler
 }
 
 func (m *Options) logger() *glog.Logger {
@@ -44,6 +47,8 @@ func (m *Options) tcpConfig() *network.TCPConfig {
 
 func NewTransportWithOptions(options Options) *Transport {
 	t := &Transport{
+		listenAddr:  options.ListenAddr,
+		handler:     options.Handler,
 		localNodeID: options.LocalNodeID,
 		config:      options.tcpConfig(),
 		peers:       newPeerManager(),
@@ -55,11 +60,25 @@ func NewTransportWithOptions(options Options) *Transport {
 
 type Transport struct {
 	localNodeID string
+	listenAddr  string
+	handler     transport.MessageHandler
 	config      *network.TCPConfig
 	peers       *peerManager // 连接管理器
 	ctx         context.Context
 	cancel      context.CancelFunc
 	logger      *glog.Logger
+}
+
+func (t *Transport) Run() error {
+	if t.handler == nil {
+		return ErrHandlerIsNil
+	}
+	if err := t.listen(t.listenAddr, t.handler); err != nil {
+		t.logger.Error("transport listen failed", zap.Error(err))
+		return err
+	}
+
+	return nil
 }
 
 func (t *Transport) newConfig(address string) *network.TCPConfig {
@@ -78,15 +97,14 @@ func (t *Transport) newHandler(businessHandler transport.MessageHandler) *transp
 	}
 }
 
-func (t *Transport) ListenAndServe(address string, handler transport.MessageHandler) error {
-	if handler == nil {
-		return ErrHandlerIsNil
-	}
+func (t *Transport) listen(address string, handler transport.MessageHandler) error {
 	server := network.NewTCPServer(t.newConfig(address))
-	if err := server.Run(t.ctx, t.newHandler(handler)); err != nil {
-		return fmt.Errorf("rpc server run err:%w", err)
-	}
-
+	grs.SafeGo(func() {
+		if err := server.Run(t.ctx, t.newHandler(handler)); err != nil {
+			t.logger.Error("transport listen failed", zap.Error(err))
+			return
+		}
+	})
 	t.logger.Info("rpc listen", zap.String("address", address))
 	return nil
 }
@@ -99,11 +117,11 @@ func (t *Transport) ConnectionState(nodeId string) PeerState {
 	return p.getState()
 }
 
-func (t *Transport) Connect(remoteId string, address string, handler transport.MessageHandler, timeout time.Duration) error {
+func (t *Transport) Connect(remoteId string, address string, timeout time.Duration) error {
 	if t.localNodeID == remoteId {
 		return fmt.Errorf("rpc connect connect local:%s", remoteId)
 	}
-	if handler == nil {
+	if t.handler == nil {
 		return ErrHandlerIsNil
 	}
 	t.peers.Lock()
@@ -115,7 +133,7 @@ func (t *Transport) Connect(remoteId string, address string, handler transport.M
 	t.peers.setLocked(remoteId, h)
 	t.peers.Unlock()
 
-	conn, err := network.DialTCP(t.ctx, timeout, t.newHandler(handler), t.newConfig(address), h)
+	conn, err := network.DialTCP(t.ctx, timeout, t.newHandler(t.handler), t.newConfig(address), h)
 	if err != nil {
 		t.peers.remove(remoteId, h)
 		t.logger.Error("rpc connect", zap.String("remoteId", remoteId), zap.Error(err))

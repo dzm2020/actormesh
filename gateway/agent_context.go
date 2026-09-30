@@ -3,10 +3,12 @@ package gateway
 import (
 	"errors"
 	"fmt"
+	"sync/atomic"
+
 	"github.com/dzm2020/actormesh/actor"
 	"github.com/dzm2020/actormesh/network/protocol"
+	"github.com/dzm2020/actormesh/pkg/glog"
 	"github.com/dzm2020/actormesh/pkg/serialize/protocodec"
-	"sync/atomic"
 
 	"go.uber.org/zap"
 )
@@ -46,7 +48,7 @@ type agentContext struct {
 	message *protocol.MessageFrame
 	request any // 已解析的包体
 	state   atomic.Uint32
-	logger  *zap.Logger
+	logger  *glog.Logger
 }
 
 func newRequestContext(agent ClientAgent, ctx actor.Context, message *protocol.MessageFrame, request any) *agentContext {

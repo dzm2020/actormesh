@@ -2,6 +2,7 @@ package actor
 
 import (
 	"fmt"
+	"github.com/dzm2020/actormesh/pkg/glog"
 	"github.com/dzm2020/actormesh/pkg/timer"
 	"sync"
 	"sync/atomic"
@@ -38,7 +39,7 @@ func newActorProcess(system *System, handler Actor, options SpawnOptions) *Proce
 type Process struct {
 	system    *System
 	pid       *PID
-	logger    *zap.Logger
+	logger    *glog.Logger
 	ctx       *actorContext
 	actor     Actor
 	mailbox   *Mailbox

@@ -3,21 +3,20 @@ package node
 import (
 	"github.com/dzm2020/actormesh/actor"
 	"github.com/dzm2020/actormesh/cluster"
+	"github.com/dzm2020/actormesh/cluster/member"
 	"github.com/dzm2020/actormesh/logicalactor"
 	"github.com/dzm2020/actormesh/pkg/component"
 )
 
 type NodeAPI interface {
-	Startup() error
-	GetID() string
-	GetKind() string
-	GetInstanceID() string
-	GetClusterAddress() string
+	Start() error
+	Info() member.NodeInfo
 	AddComponent(components ...component.IComponent) error
 	GetComponent(name string) component.IComponent
 	GetCluster() cluster.ClusterAPI
 	GetSystem() actor.SystemAPI
 	GetActorRouter() logicalactor.ActorRouter
+	Shutdown() error
 }
 
 type NodeBehavior interface {

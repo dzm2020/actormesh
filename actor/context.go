@@ -3,10 +3,10 @@ package actor
 import (
 	"time"
 
-	"go.uber.org/zap"
+	"github.com/dzm2020/actormesh/pkg/glog"
 )
 
-func newActorContext(system *System, pid *PID, handler Actor, logger *zap.Logger, options SpawnOptions) *actorContext {
+func newActorContext(system *System, pid *PID, handler Actor, logger *glog.Logger, options SpawnOptions) *actorContext {
 	ctx := &actorContext{
 		self:       pid,
 		system:     system,
@@ -25,7 +25,7 @@ type actorContext struct {
 	initArgs   []any         // 初始化参数
 	actor      Actor         // 回调句柄
 	askTimeout time.Duration // 同步调用超时时间
-	logger     *zap.Logger
+	logger     *glog.Logger
 }
 
 func (c *actorContext) Self() *PID {
@@ -108,7 +108,7 @@ func (c *actorContext) Actor() Actor {
 	return c.actor
 }
 
-func (c *actorContext) Logger() *zap.Logger {
+func (c *actorContext) Logger() *glog.Logger {
 	return c.logger
 }
 

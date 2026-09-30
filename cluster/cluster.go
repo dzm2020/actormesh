@@ -11,7 +11,6 @@ import (
 	"github.com/dzm2020/actormesh/pkg/component"
 	"github.com/dzm2020/actormesh/pkg/glog"
 	"github.com/dzm2020/actormesh/pkg/grs"
-	"github.com/dzm2020/actormesh/pkg/netutil"
 
 	"go.uber.org/zap"
 )
@@ -19,53 +18,48 @@ import (
 var _ ClusterAPI = (*Cluster)(nil)
 
 type Options struct {
-	MemberManager member.MemberManagerAPI
-	Transport     transport.TransportAPI
-	Logger        *glog.Logger
+	NodeInfo  member.NodeInfo
+	Registry  member.RegistryAPI
+	Handler   MessageHandler
+	Transport transport.TransportAPI
+	Logger    *glog.Logger
 }
 
-func (m *Options) logger() *glog.Logger {
-	if m.Logger == nil {
-		return glog.Log()
-	}
-	return m.Logger
-}
-
-func New(instance member.ServiceInstance, handler MessageHandler) *Cluster {
-	return NewWithOptions(instance, handler, Options{})
-}
-
-func NewWithOptions(instance member.ServiceInstance, handler MessageHandler, options Options) *Cluster {
+func NewWithOptions(options Options) *Cluster {
 	c := &Cluster{
-		handler:       handler,
-		local:         instance,
-		memberManager: options.MemberManager,
-		transport:     options.Transport,
-		logger:        options.logger(),
+		node:      options.NodeInfo,
+		registry:  options.Registry,
+		transport: options.Transport,
+		logger:    options.Logger,
+		handler:   options.Handler,
 	}
-
 	c.ctx, c.cancel = context.WithCancel(context.Background())
 	c.SetName("cluster")
-	c.logger = c.logger.With(zap.String("component", c.GetName()))
+	if c.logger == nil {
+		c.logger = glog.Log().With(zap.String("component", c.GetName()))
+	}
 	return c
 }
 
 type Cluster struct {
 	component.BaseComponent
-	local         member.ServiceInstance
-	memberManager member.MemberManagerAPI // 集群发现器
-	transport     transport.TransportAPI
-	handler       MessageHandler
-	logger        *glog.Logger
-	ctx           context.Context
-	cancel        context.CancelFunc
-	leaveOnce     sync.Once
+	handler   MessageHandler
+	node      member.NodeInfo
+	registry  member.RegistryAPI // 集群发现器
+	transport transport.TransportAPI
+	logger    *glog.Logger
+	ctx       context.Context
+	cancel    context.CancelFunc
+	leaveOnce sync.Once
 }
 
 func (c *Cluster) Init() error {
 	return c.GuardInit(func() error {
-		if c.memberManager == nil {
-			return errors.New("cluster member manager is nil")
+		if err := c.node.Validate(); err != nil {
+			return err
+		}
+		if c.registry == nil {
+			return errors.New("cluster registry is nil")
 		}
 		if c.transport == nil {
 			return errors.New("cluster transport is nil")
@@ -73,33 +67,21 @@ func (c *Cluster) Init() error {
 		if c.handler == nil {
 			return errors.New("cluster handler is nil")
 		}
-		if err := c.local.Validate(); err != nil {
-			return err
-		}
 		return nil
 	})
 }
 
 func (c *Cluster) Start() error {
 	return c.GuardStart(func() error {
-
-		if err := c.memberManager.Run(c.ctx); err != nil {
+		if err := c.transport.Run(); err != nil {
 			return err
 		}
-
-		grs.SafeGo(func() {
-			address := netutil.EndpointAddress(c.local.Address, c.local.Port)
-			if err := c.transport.ListenAndServe(address, transport.MessageHandler(c.handler)); err != nil {
-				_ = c.Leave()
-				c.logger.Error("cluster listen failed", zap.Error(err))
-				return
-			}
-		})
-
+		if err := c.registry.Run(c.ctx); err != nil {
+			return err
+		}
 		grs.SafeGo(func() {
 			c.runConnector()
 		})
-
 		if err := c.Join(); err != nil {
 			return err
 		}
@@ -115,27 +97,26 @@ func (c *Cluster) runConnector() {
 		case <-c.ctx.Done():
 			return
 		case <-timer.C:
-			for _, instance := range c.memberManager.AllMembers() {
+			for _, instance := range c.registry.AllMembers() {
 				c.connectMember(instance)
 			}
 		}
 	}
 }
 
-func (c *Cluster) connectMember(instance member.ServiceInstance) {
-	if c.local.ID >= instance.ID {
+func (c *Cluster) connectMember(node member.NodeInfo) {
+	if c.node.ID >= node.ID {
 		return
 	}
-
-	state := c.transport.ConnectionState(instance.ID)
+	state := c.transport.ConnectionState(node.ID)
 	if state == transport.PeerStateConnected || state == transport.PeerStateHandshaking {
 		return
 	}
-	address := netutil.EndpointAddress(instance.Address, instance.Port)
+	address := node.Address
 	grs.SafeGo(func() {
-		if err := c.transport.Connect(instance.ID, address, transport.MessageHandler(c.handler), time.Second*5); err != nil {
+		if err := c.transport.Connect(node.ID, address, time.Second*5); err != nil {
 			c.logger.Warn("cluster connect member failed",
-				zap.String("nodeId", instance.ID),
+				zap.String("nodeId", node.ID),
 				zap.String("address", address), zap.Error(err))
 		}
 	})
@@ -150,22 +131,22 @@ func (c *Cluster) Broadcast(data []byte) error {
 }
 
 func (c *Cluster) Join() error {
-	return c.memberManager.Join(c.local)
+	return c.registry.Join(c.node)
 }
 
 func (c *Cluster) Leave() error {
-	return c.memberManager.Leave(c.local.ID)
+	return c.registry.Leave(c.node.ID)
 }
 
-func (c *Cluster) Members(service string) map[string]member.ServiceInstance {
-	return c.memberManager.Members(service)
+func (c *Cluster) Members(nodeId string) map[string]member.NodeInfo {
+	return c.registry.Members(nodeId)
 }
 
-func (c *Cluster) MemberById(serviceId string) (member.ServiceInstance, bool) {
-	return c.memberManager.MemberById(serviceId)
+func (c *Cluster) MemberById(nodeId string) (member.NodeInfo, bool) {
+	return c.registry.MemberById(nodeId)
 }
-func (c *Cluster) AllMembers() []member.ServiceInstance {
-	return c.memberManager.AllMembers()
+func (c *Cluster) AllMembers() []member.NodeInfo {
+	return c.registry.AllMembers()
 }
 
 func (c *Cluster) Stop() error {

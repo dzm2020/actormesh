@@ -7,6 +7,7 @@ import (
 
 	"github.com/dzm2020/actormesh/actor"
 	"github.com/dzm2020/actormesh/cluster"
+	"github.com/dzm2020/actormesh/cluster/member"
 	"github.com/dzm2020/actormesh/logicalactor"
 	"github.com/dzm2020/actormesh/pkg/component"
 	"github.com/dzm2020/actormesh/pkg/glog"
@@ -28,22 +29,18 @@ var (
 
 func New(options Options) *Node {
 	n := &Node{
-		options:        options,
-		id:             options.ID,
-		kind:           options.Kind,
-		clusterAddress: options.ClusterAddress,
-		createdAt:      time.Now(),
-		manager:        component.NewComponentsMgr(),
+		node:    options.NodeInfo,
+		options: options,
+		manager: component.NewComponentsMgr(),
 	}
+	n.node.StartedAt = time.Now().UnixMilli()
 	return n
 }
 
 type Node struct {
+	node               member.NodeInfo
 	options            Options
-	id                 string
-	kind               string
 	clusterAddress     string
-	createdAt          time.Time
 	manager            component.IManager
 	system             actor.SystemAPI
 	cluster            cluster.ClusterAPI
@@ -52,14 +49,8 @@ type Node struct {
 	phase              phase
 }
 
-func (n *Node) GetID() string {
-	return n.id
-}
-func (n *Node) GetClusterAddress() string {
-	return n.clusterAddress
-}
-func (n *Node) GetKind() string {
-	return n.kind
+func (n *Node) Info() member.NodeInfo {
+	return n.node
 }
 func (n *Node) GetOptions() *Options {
 	return &n.options
@@ -70,10 +61,6 @@ func (n *Node) GetSystem() actor.SystemAPI {
 
 func (n *Node) GetCluster() cluster.ClusterAPI {
 	return n.cluster
-}
-
-func (n *Node) GetInstanceID() string {
-	return fmt.Sprintf("%d", n.createdAt.UnixNano())
 }
 
 func (n *Node) GetActorRouter() logicalactor.ActorRouter {

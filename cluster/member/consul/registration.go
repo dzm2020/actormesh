@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/dzm2020/actormesh/cluster/member"
 	"github.com/dzm2020/actormesh/pkg/grs"
 	"sync"
 
@@ -27,7 +28,7 @@ func newRegistration(registry *Registry) *registration {
 	}
 }
 
-func (r *registration) join(instance ServiceInstance) error {
+func (r *registration) join(instance member.NodeInfo) error {
 	options := r.registry.options
 	client := r.registry.client
 	serviceId := instance.ID

@@ -4,8 +4,7 @@ import (
 	"time"
 
 	"github.com/dzm2020/actormesh/pkg/component"
-
-	"go.uber.org/zap"
+	"github.com/dzm2020/actormesh/pkg/glog"
 )
 
 // RemoteSender 定义 Actor 系统向集群其他节点发送二进制消息的端口。
@@ -132,7 +131,7 @@ type Context interface {
 	// Actor 返回当前上下文绑定的 Actor 实例。
 	Actor() Actor
 	// Logger 返回携带当前 Actor 字段的日志器。
-	Logger() *zap.Logger
+	Logger() *glog.Logger
 	// Stop 退出actor,stop之后写入的消息不会处理。
 	Stop()
 }

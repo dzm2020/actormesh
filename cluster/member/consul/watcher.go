@@ -3,6 +3,7 @@ package consul
 import (
 	"context"
 	"fmt"
+	"github.com/dzm2020/actormesh/cluster/member"
 	"github.com/dzm2020/actormesh/pkg/grs"
 	"sort"
 	"time"
@@ -14,13 +15,13 @@ import (
 
 type watcher struct {
 	registry *Registry
-	caches   *maputil.ConcurrentMap[string, map[string]ServiceInstance]
+	caches   *maputil.ConcurrentMap[string, map[string]member.NodeInfo]
 	runGroup *grs.Group
 }
 
 func newWatcher(registry *Registry, ctx context.Context) *watcher {
 	w := &watcher{
-		caches:   maputil.NewConcurrentMap[string, map[string]ServiceInstance](1),
+		caches:   maputil.NewConcurrentMap[string, map[string]member.NodeInfo](1),
 		registry: registry,
 		runGroup: grs.NewGroup(ctx),
 	}
@@ -137,7 +138,7 @@ func (w *watcher) watchService(ctx context.Context, service string) {
 }
 
 // 拉去服务实例
-func (w *watcher) fetchService(service string, waitIndex uint64) (map[string]ServiceInstance, *api.QueryMeta, error) {
+func (w *watcher) fetchService(service string, waitIndex uint64) (map[string]member.NodeInfo, *api.QueryMeta, error) {
 	query := &api.QueryOptions{
 		WaitIndex: waitIndex,
 		WaitTime:  defaultWatchWaitTime,

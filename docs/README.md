@@ -26,6 +26,12 @@
 | [Gateway 业务接入手册](gateway.md) | 客户端路由、Agent、响应和主动推送 |
 | [Logical Actor 手册](logicalactor.md) | 逻辑身份、Owner、跨节点路由和 Redis Directory |
 
+### 4. 架构评估
+
+| 文档 | 适合了解 |
+| --- | --- |
+| [架构与设计模式评估](architecture-review.md) | 模块耦合度、设计模式、主要风险和改进优先级 |
+
 ## 文档约定
 
 - `framework/docs` 只保存框架使用文档，不保存生成提示词、临时笔记或外部模型输出。
@@ -50,4 +56,3 @@ framework/
 ├── node/           节点生命周期与组件编排
 └── pkg/            component、日志、编解码等通用工具
 ```
-

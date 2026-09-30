@@ -1,18 +1,17 @@
 package node
 
 import (
+	"fmt"
+
 	"github.com/dzm2020/actormesh/cluster"
-	"strings"
 
 	"github.com/dzm2020/actormesh/cluster/member"
 	"github.com/dzm2020/actormesh/logicalactor"
 )
 
-const NodeInstanceIDMetaKey = "node_instance_id"
-
 type MemberSource interface {
-	Members(service string) (map[string]member.ServiceInstance, error)
-	MemberByID(serviceID string) (member.ServiceInstance, bool)
+	Members(service string) (map[string]member.NodeInfo, error)
+	MemberByID(serviceID string) (member.NodeInfo, bool)
 }
 
 type ActorNodeAdapter struct {
@@ -38,14 +37,7 @@ func (p *ActorNodeAdapter) MemberById(serviceID string) (logicalactor.NodeInfo, 
 	return newLogicalActorNode(node), ok
 }
 
-func newLogicalActorNode(instance member.ServiceInstance) logicalactor.NodeInfo {
-	instanceId := instanceID(instance)
-	return logicalactor.NodeInfo{NodeId: instance.ID, Kind: instance.Name, InstanceId: instanceId}
-}
-
-func instanceID(instance member.ServiceInstance) string {
-	if instance.Meta == nil {
-		return ""
-	}
-	return strings.TrimSpace(instance.Meta[NodeInstanceIDMetaKey])
+func newLogicalActorNode(node member.NodeInfo) logicalactor.NodeInfo {
+	instanceId := fmt.Sprintf("%d", node.StartedAt)
+	return logicalactor.NodeInfo{NodeId: node.ID, Kind: node.Name, InstanceId: instanceId}
 }

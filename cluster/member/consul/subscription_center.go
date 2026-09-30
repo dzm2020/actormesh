@@ -3,6 +3,8 @@ package consul
 import (
 	"errors"
 	"sync"
+
+	"github.com/dzm2020/actormesh/cluster/member"
 )
 
 var (
@@ -12,12 +14,12 @@ var (
 )
 
 type Subscriber interface {
-	OnClusterChange(members []ServiceInstance)
+	OnClusterChange(members []member.NodeInfo)
 }
 
-type SubscriberFunc func(members []ServiceInstance) error
+type SubscriberFunc func(members []member.NodeInfo) error
 
-func (f SubscriberFunc) OnClusterChange(members []ServiceInstance) error {
+func (f SubscriberFunc) OnClusterChange(members []member.NodeInfo) error {
 	if f == nil {
 		return ErrSubscriberNil
 	}
@@ -71,7 +73,7 @@ func (c *SubscriptionCenter) Unsubscribe(id SubscriptionID) bool {
 	return true
 }
 
-func (c *SubscriptionCenter) Notify(members []ServiceInstance) {
+func (c *SubscriptionCenter) Notify(members []member.NodeInfo) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	for _, entry := range c.subscribers {

@@ -12,9 +12,9 @@ type ClusterAPI interface {
 	component.IComponent
 	Join() error
 	Leave() error
-	AllMembers() []member.ServiceInstance
-	Members(service string) map[string]member.ServiceInstance
-	MemberById(serviceId string) (member.ServiceInstance, bool)
+	AllMembers() []member.NodeInfo
+	Members(service string) map[string]member.NodeInfo
+	MemberById(serviceId string) (member.NodeInfo, bool)
 
 	SendToNode(nodeID string, data []byte) error
 	Broadcast(data []byte) error
