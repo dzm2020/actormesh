@@ -32,7 +32,7 @@ type Options struct {
 	Logger  *glog.Logger
 	Server  network.Server
 	System  ActorGateway
-	spawner AgentSpawner
+	Spawner AgentSpawner
 }
 
 func (m *Options) logger() *glog.Logger {
@@ -46,7 +46,7 @@ func New(options Options) *Gateway {
 	gateway := &Gateway{
 		server:  options.Server,
 		system:  options.System,
-		spawner: options.spawner,
+		spawner: options.Spawner,
 		pids:    maputil.NewConcurrentMap[int64, *actor.PID](10),
 		logger:  options.logger(),
 	}
