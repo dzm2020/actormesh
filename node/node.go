@@ -76,3 +76,7 @@ func (n *Node) AddComponent(components ...component.IComponent) error {
 func (n *Node) GetComponent(name string) component.IComponent {
 	return n.manager.Get(name)
 }
+
+func (n *Node) Logger() *glog.Logger {
+	return n.logger
+}

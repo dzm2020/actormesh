@@ -6,6 +6,7 @@ import (
 	"github.com/dzm2020/actormesh/cluster/member"
 	"github.com/dzm2020/actormesh/logicalactor"
 	"github.com/dzm2020/actormesh/pkg/component"
+	"github.com/dzm2020/actormesh/pkg/glog"
 )
 
 type NodeAPI interface {
@@ -16,6 +17,7 @@ type NodeAPI interface {
 	GetCluster() cluster.ClusterAPI
 	GetSystem() actor.SystemAPI
 	GetActorRouter() logicalactor.ActorRouterAPI
+	Logger() *glog.Logger
 	Shutdown() error
 }
 
