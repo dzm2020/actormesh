@@ -15,7 +15,7 @@ type NodeAPI interface {
 	GetComponent(name string) component.IComponent
 	GetCluster() cluster.ClusterAPI
 	GetSystem() actor.SystemAPI
-	GetActorRouter() logicalactor.ActorRouter
+	GetActorRouter() logicalactor.ActorRouterAPI
 	Shutdown() error
 }
 

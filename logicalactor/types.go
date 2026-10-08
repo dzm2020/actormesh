@@ -15,12 +15,11 @@ import (
 
 type ActorFactory func(ActorID) (actor.Actor, actor.SpawnOptions)
 
-type ActorRouter interface {
+type ActorRouterAPI interface {
 	component.IComponent
 	SetDirectory(ownerDirectory OwnerDirectory)
 	RegisterFactory(kind string, factory ActorFactory) error
 	RegisterPlacement(kind string, strategy PlacementStrategy) error
-	CloseActor(actorID ActorID) error
 	Tell(ctx actor.Context, actorID ActorID, message proto.Message) error
 	Ask(ctx actor.Context, actorID ActorID, message proto.Message) (any, error)
 	Forward(ctx actor.Context, actorID ActorID, message proto.Message) error

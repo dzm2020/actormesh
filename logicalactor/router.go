@@ -29,6 +29,7 @@ type Options struct {
 	Local     NodeInfo
 	System    actor.RouterRuntime
 	Discovery Discovery
+	Directory OwnerDirectory
 	Logger    *glog.Logger
 }
 
@@ -38,11 +39,12 @@ func (m *Options) logger() *glog.Logger {
 	}
 	return m.Logger
 }
-func New(options Options) ActorRouter {
+func New(options Options) ActorRouterAPI {
 	router := &Router{
 		local:       options.Local,
 		discovery:   options.Discovery,
 		actorSystem: options.System,
+		directory:   options.Directory,
 		placements:  maputil.NewConcurrentMap[string, PlacementStrategy](10),
 		factories:   maputil.NewConcurrentMap[string, ActorFactory](10),
 		logger:      options.Logger,
@@ -51,7 +53,7 @@ func New(options Options) ActorRouter {
 	return router
 }
 
-var _ ActorRouter = (*Router)(nil)
+var _ ActorRouterAPI = (*Router)(nil)
 
 type Router struct {
 	component.BaseComponent
@@ -133,24 +135,6 @@ func (router *Router) RegisterPlacement(kind string, strategy PlacementStrategy)
 	}
 	if _, exists := router.placements.GetOrSet(kind, strategy); exists {
 		return fmt.Errorf("%w: %s", ErrPlacementStrategyRegistered, kind)
-	}
-	return nil
-}
-
-func (router *Router) CloseActor(actorID ActorID) error {
-	if router == nil || router.Status() != component.LifecycleStateStarted {
-		return ErrLogicalActorRouterNotStarted
-	}
-	if err := actorID.Validate(); err != nil {
-		return err
-	}
-	if _, err := router.actorSystem.Ask(
-		actor.NoSender,
-		actor.NewPID(0, RouterActorName, router.localNodeID()),
-		closeActorRequest{actorID: actorID},
-		0,
-	); err != nil {
-		return fmt.Errorf("logical actor close actor_id:%s: %w", actorID.String(), err)
 	}
 	return nil
 }

@@ -44,7 +44,7 @@ type Node struct {
 	manager            component.IManager
 	system             actor.SystemAPI
 	cluster            cluster.ClusterAPI
-	logicalActorRouter logicalactor.ActorRouter
+	logicalActorRouter logicalactor.ActorRouterAPI
 	logger             *glog.Logger
 	phase              phase
 }
@@ -63,7 +63,7 @@ func (n *Node) GetCluster() cluster.ClusterAPI {
 	return n.cluster
 }
 
-func (n *Node) GetActorRouter() logicalactor.ActorRouter {
+func (n *Node) GetActorRouter() logicalactor.ActorRouterAPI {
 	return n.logicalActorRouter
 }
 

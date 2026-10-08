@@ -6,7 +6,6 @@ import (
 	"github.com/dzm2020/actormesh/actor"
 	"github.com/dzm2020/actormesh/cluster"
 	"github.com/dzm2020/actormesh/cluster/member"
-	"github.com/dzm2020/actormesh/cluster/transport"
 	"github.com/dzm2020/actormesh/logicalactor"
 	"github.com/dzm2020/actormesh/pkg/component"
 	"github.com/dzm2020/actormesh/pkg/glog"
@@ -18,16 +17,13 @@ type LoggerOptions = glog.Config
 
 type Options struct {
 	member.NodeInfo
-	Logger         LoggerOptions
-	Behavior       NodeBehavior
-	PanicHook      zapcore.CheckWriteHook
-	System         actor.SystemAPI
-	Cluster        cluster.ClusterAPI
-	MemberManager  member.RegistryAPI
-	Transport      transport.TransportAPI
-	ActorRouter    logicalactor.ActorRouter
-	ActorDirectory logicalactor.OwnerDirectory
-	Components     []component.IComponent
+	Logger      LoggerOptions               // 日志
+	Behavior    NodeBehavior                // 节点回调
+	PanicHook   zapcore.CheckWriteHook      // 节点panic回调
+	System      actor.SystemAPI             // 本地actor系统
+	Cluster     cluster.ClusterAPI          // 集群
+	ActorRouter logicalactor.ActorRouterAPI // 逻辑actor寻址
+	Components  []component.IComponent      // 扩展组件
 }
 
 func (options Options) normalize() Options {

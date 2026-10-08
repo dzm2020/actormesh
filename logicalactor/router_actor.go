@@ -16,10 +16,6 @@ const (
 	maxRouteForwards = uint32(3)
 )
 
-type closeActorRequest struct {
-	actorID ActorID
-}
-
 type RouterActor struct {
 	actor.DefaultActor
 	router *Router
@@ -32,42 +28,17 @@ func (r *RouterActor) HandleTell(ctx actor.Context, message any) {
 }
 
 func (r *RouterActor) HandleAsk(ctx actor.Context, message any) (any, error) {
-	if request, ok := message.(closeActorRequest); ok {
-		return true, r.closeActor(request.actorID)
-	}
 	return nil, r.handleMessage(ctx, message)
 }
 
 func (r *RouterActor) handleMessage(ctx actor.Context, message any) error {
 	switch msg := message.(type) {
-	case closeActorRequest:
-		if err := r.closeActor(msg.actorID); err != nil {
-			return fmt.Errorf("close actor %s: %w", msg.actorID.String(), err)
-		}
 	case *logicalactorpb.RouteRequest:
 		if err := r.routeMessage(ctx, msg); err != nil {
 			return fmt.Errorf("route message: %w", err)
 		}
 	default:
 		return fmt.Errorf("unknown msg type: %T", msg)
-	}
-	return nil
-}
-
-func (r *RouterActor) closeActor(actorID ActorID) error {
-	owner, found, err := r.router.directory.GetOwner(actorID)
-	if err != nil {
-		return err
-	}
-	if !found {
-		return nil
-	}
-	if owner != r.router.local {
-		return ErrOwnerMismatch
-	}
-	target := actor.NewPID(0, actorID.Name(), r.router.localNodeID())
-	if r.router.actorSystem.Has(target) {
-		r.router.actorSystem.StopProcess(actor.NoSender, target)
 	}
 	return nil
 }

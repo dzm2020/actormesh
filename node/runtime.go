@@ -67,15 +67,13 @@ func (n *Node) initializeCluster() cluster.ClusterAPI {
 		return n.system.OnMessage(nodeID, data)
 	}
 	return bootstrap.NewDefaultCluster(bootstrap.Options{
-		NodeInfo:  n.Info(),
-		Logger:    n.logger,
-		Handler:   handler,
-		Registry:  n.options.MemberManager,
-		Transport: n.options.Transport,
+		NodeInfo: n.Info(),
+		Logger:   n.logger,
+		Handler:  handler,
 	})
 }
 
-func (n *Node) initializeActorRoute(cluster cluster.ClusterAPI, system actor.SystemAPI) logicalactor.ActorRouter {
+func (n *Node) initializeActorRoute(cluster cluster.ClusterAPI, system actor.SystemAPI) logicalactor.ActorRouterAPI {
 	route := n.options.ActorRouter
 	if route == nil {
 		route = logicalactor.New(logicalactor.Options{
@@ -85,7 +83,6 @@ func (n *Node) initializeActorRoute(cluster cluster.ClusterAPI, system actor.Sys
 			Logger:    n.logger,
 		})
 	}
-	route.SetDirectory(n.options.ActorDirectory)
 	return route
 }
 
