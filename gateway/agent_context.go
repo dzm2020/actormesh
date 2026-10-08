@@ -46,17 +46,15 @@ type agentContext struct {
 	actor.Context
 	agent   ClientAgent
 	message *protocol.MessageFrame
-	request any // 已解析的包体
 	state   atomic.Uint32
 	logger  *glog.Logger
 }
 
-func newRequestContext(agent ClientAgent, ctx actor.Context, message *protocol.MessageFrame, request any) *agentContext {
+func newRequestContext(agent ClientAgent, ctx actor.Context, message *protocol.MessageFrame) *agentContext {
 	return &agentContext{
 		Context: ctx,
 		agent:   agent,
 		message: message,
-		request: request,
 		logger: ctx.Logger().With(zap.Uint8("cmd", message.Cmd),
 			zap.Uint8("act", message.Act), zap.Uint32("index", message.Index)),
 	}
