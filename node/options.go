@@ -17,13 +17,14 @@ type LoggerOptions = glog.Config
 
 type Options struct {
 	member.NodeInfo
-	Logger      LoggerOptions               // 日志
-	Behavior    NodeBehavior                // 节点回调
-	PanicHook   zapcore.CheckWriteHook      // 节点panic回调
-	System      actor.SystemAPI             // 本地actor系统
-	Cluster     cluster.ClusterAPI          // 集群
-	ActorRouter logicalactor.ActorRouterAPI // 逻辑actor寻址
-	Components  []component.IComponent      // 扩展组件
+	Logger         LoggerOptions               // 日志
+	Behavior       NodeBehavior                // 节点回调
+	PanicHook      zapcore.CheckWriteHook      // 节点panic回调
+	System         actor.SystemAPI             // 本地actor系统
+	Cluster        cluster.ClusterAPI          // 集群
+	ActorRouter    logicalactor.ActorRouterAPI // 逻辑actor寻址
+	ActorDirectory logicalactor.OwnerDirectory
+	Components     []component.IComponent // 扩展组件
 }
 
 func (options Options) normalize() Options {

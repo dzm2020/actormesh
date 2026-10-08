@@ -81,6 +81,7 @@ func (n *Node) initializeActorRoute(cluster cluster.ClusterAPI, system actor.Sys
 			System:    system,
 			Discovery: NewActorNodeAdapter(cluster),
 			Logger:    n.logger,
+			Directory: n.options.ActorDirectory,
 		})
 	}
 	return route

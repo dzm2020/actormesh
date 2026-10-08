@@ -76,10 +76,6 @@ func (router *Router) isLocal(owner NodeInfo) bool {
 	return owner.NodeId == router.local.NodeId
 }
 
-func (router *Router) SetDirectory(ownerDirectory OwnerDirectory) {
-	router.directory = ownerDirectory
-}
-
 func (router *Router) Start() error {
 	return router.GuardStart(func() error {
 		switch {

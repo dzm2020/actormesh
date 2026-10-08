@@ -17,7 +17,6 @@ type ActorFactory func(ActorID) (actor.Actor, actor.SpawnOptions)
 
 type ActorRouterAPI interface {
 	component.IComponent
-	SetDirectory(ownerDirectory OwnerDirectory)
 	RegisterFactory(kind string, factory ActorFactory) error
 	RegisterPlacement(kind string, strategy PlacementStrategy) error
 	Tell(ctx actor.Context, actorID ActorID, message proto.Message) error

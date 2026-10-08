@@ -1,6 +1,6 @@
 # 网络与协议指南
 
-`framework/network` 提供 TCP、UDP 和 WebSocket 服务端，以及 TCP 客户端连接。传输层统一向 `TransportHandler` 交付 `protocol.MessageFrame`，业务代码不需要直接处理 TCP 粘包或 WebSocket 消息边界。
+`network` 提供 TCP、UDP 和 WebSocket 服务端，以及 TCP 客户端连接。传输层统一向 `TransportHandler` 交付 `protocol.MessageFrame`，业务代码不需要直接处理 TCP 粘包或 WebSocket 消息边界。
 
 ## 连接模型
 
@@ -55,7 +55,7 @@ if err != nil { return err }
 return server.Run(ctx, handler)
 ```
 
-UDP 数据报需要带 16 字节头：8 字节 `SessionID` 和 8 字节 `Sequence`。`SessionID` 不能为 0。同一个源地址出现新的 SessionID 时，服务端会关闭旧 UDP 连接。
+UDP 数据报应携带一个完整协议帧；当前接收实现只处理头后的首个帧，不跨数据报拼接半包，也不循环消费多帧。数据报需要带 16 字节头：8 字节 `SessionID` 和 8 字节 `Sequence`。`SessionID` 不能为 0。同一个源地址出现新的 SessionID 时，服务端会关闭旧 UDP 连接。`Sequence` 随服务端发送自增，接收端当前不做排序、去重或重传。
 
 ## WebSocket
 
@@ -78,7 +78,7 @@ type TransportHandler interface {
 }
 ```
 
-`OnConnected` 返回错误会导致连接启动失败；连接进入 Ready 后关闭时调用 `OnClose`。
+`OnConnected` 在 Ready 时调用，返回错误会关闭连接。写循环退出时异步调用 `OnClose`，握手失败或启动失败也可能触发该回调。`OnMessage` 返回错误会结束读循环并关闭连接。
 
 ## Connection
 
@@ -93,13 +93,13 @@ type Connection interface {
 	SetUserData(data any)
 	Role() ConnectionRole
 	Network() string
-	Log() *zap.Logger
+	Log() *glog.Logger
 	SendMessage(message *protocol.MessageFrame) error
 	Close(err error)
 }
 ```
 
-TCP 连接额外支持 `SetLinger`、`SetNoDelay`、`SetKeepAlive`、`SetSocketReadBuffer` 和 `SetSocketWriteBuffer`。连接写入使用有容量限制的发送队列，队列满时返回 `ErrNetworkChannelFull`。
+TCP 连接额外支持 `SetLinger`、`SetNoDelay`、`SetSocketReadBuffer` 和 `SetSocketWriteBuffer`。连接写入使用有容量限制的发送队列，队列满时返回 `ErrNetworkChannelFull`。
 
 ## 配置默认值
 
@@ -108,11 +108,14 @@ TCP 连接额外支持 `SetLinger`、`SetNoDelay`、`SetKeepAlive`、`SetSocketR
 | `MaxInboundSize` | 32 KiB（整帧长度：Body + 17 字节帧头） |
 | `MaxOutboundSize` | 32 KiB（整帧长度：Body + 17 字节帧头） |
 | TCP `ReadBufferCap` | 至少 `MaxInboundSize + 8 KiB` |
-| `SendChanSize` | TCP/WebSocket 1024；UDP 10240 |
+| `SendChanSize` | 所有连接 1024 |
+| UDP `ServerSendChanSize` | 服务端共享队列 10240 |
+| `HeartbeatTimeout` | 5 秒；正值小于 1 秒时提升到 1 秒 |
+| `WriteTimeout` | 3 秒 |
 | `HandshakeTimeout` | 5 秒 |
 | `Upgrader` | 空配置的 `websocket.Upgrader` |
 
-`HeartbeatTimeout <= 0` 时不启动心跳超时检查。
+默认配置函数只创建配置对象，服务端构造函数和 `DialTCP` 调用 `Normalize()` 后应用默认值。`HeartbeatTimeout <= 0` 会恢复为 5 秒，不能用 0 禁用检查。每隔超时时长的一半检查一次；完整入站协议帧刷新活动时间，发送不刷新，握手期间跳过检查。
 
 ## MessageFrame
 
@@ -123,12 +126,11 @@ type MessageFrame struct {
 	Flags uint8
 	Error uint16
 	Index uint32
-	CRC uint32
 	Body []byte
 }
 ```
 
-统一帧头为 17 字节：`BodyLength(4) Cmd(1) Act(1) Flags(1) Error(2) Index(4) CRC(4) Body(n)`。
+CRC 是私有字段，编码时按 Body 计算，不能通过导出结构字段设置。统一帧头为 17 字节：`BodyLength(4) Cmd(1) Act(1) Flags(1) Error(2) Index(4) CRC(4) Body(n)`。
 
 ```go
 frame := protocol.NewMessageFrame(1, 1, 0, []byte("hello"))
@@ -138,7 +140,7 @@ decoded, consumed, err := protocol.DecodeMessageFrame(data)
 
 `consumed == 0` 表示数据不足，需要等待更多数据；CRC 校验失败返回错误。`EncodeMessageFrameWithLimit` 和 `DecodeMessageFrameWithLimit` 按**整帧长度**（Body + 17 字节帧头）限制大小，`maxFrameSize <= 0` 表示不限制；超限返回 `protocol.ErrFrameTooLarge`（旧名 `ErrBodyTooLarge` 为兼容别名）。`MaxInboundSize` / `MaxOutboundSize` 同样是整帧口径，因此 TCP/WebSocket/UDP 对同一帧的接收判定一致。
 
-WebSocket 的 `SetReadLimit` 是传输层保护，取值 `MaxInboundSize + 8 KiB`：单条 WS 消息等价于 TCP 的一次读块，允许消息内包含多个完整帧（粘包）；每个帧是否超限仍由 `DecodeMessageFrameWithLimit` 按整帧长度判定，所以 32768 字节整帧（Body 32751）可收，32785 字节整帧（Body 32768）在三种协议上都会被拒绝。
+WebSocket 当前没有调用 `SetReadLimit`。它使用 `NextReader` 按 8 KiB 分块读取，接收缓冲区容量为 `MaxInboundSize + 8 KiB`；一条 WS 消息可包含多个协议帧，一个协议帧也可跨多条 WS 消息。每个帧按整帧长度判定，默认配置下 32768 字节整帧（Body 32751）可收，32785 字节整帧（Body 32768）会被拒绝。超限本地关闭发送关闭码 1009，其他本地错误发送 1011，正常本地关闭发送 1000。
 
 业务命令不能使用 `Cmd == 0`，该命令保留给内部握手和关闭控制。
 
@@ -169,7 +171,7 @@ ciphertext, err := cipher.Encrypt(plaintext)
 plaintext, err = cipher.Decrypt(ciphertext)
 ```
 
-业务通常应通过 `CommonConfig.EncryptEnable` 使用连接层加密。
+业务通常应通过 `CommonConfig.EncryptEnable` 使用连接层加密。当前实现通过 X25519 和 HKDF-SHA256 派生 32 字节密钥，再执行源码定义的逐字节可逆转换，输出与输入等长。配置 Codec 时，发送依次执行 Codec 编码、业务 Body 加密和帧编码；接收按逆序恢复。内部握手帧跳过加密，但仍经过配置的 Codec。
 
 ## 导出 API 参考
 
@@ -231,8 +233,9 @@ plaintext, err = cipher.Decrypt(ciphertext)
 | `ErrHandshakeNotComplete` | 握手尚未完成 |
 | `ErrHeartbeatTimeout` | 心跳超时 |
 | `ErrInvalidFrameConsumeSize` | 消费字节数非法 |
-| `ErrInvalidConnectionConfig` | 连接配置非法 |
+| `ErrInvalidConnectionState` | 连接状态非法 |
+| `ErrUnexpectedTCPConnType` | 非预期 TCP 连接类型错误常量 |
 
 ## 重要错误
 
-`ErrConnectionClosed`、`ErrNetworkChannelFull`、`ErrHandshakeNotComplete`、`ErrHeartbeatTimeout`、`ErrInvalidFrameConsumeSize` 和协议包错误应由上层记录并决定是否关闭连接。
+`ErrConnectionClosed`、`ErrNetworkChannelFull`、`ErrHandshakeNotComplete`、`ErrHeartbeatTimeout`、`ErrInvalidFrameConsumeSize` 和协议包错误应由上层处理。接收解析、解码或 Handler 返回错误时读循环会自动关闭连接；`SendMessage` 返回错误由调用者处理。
