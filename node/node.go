@@ -27,14 +27,19 @@ var (
 	ErrNodeInvalidPhase = errors.New("node is not in new phase")
 )
 
-func New(options Options) *Node {
+func New(options Options) (*Node, error) {
 	n := &Node{
 		node:    options.NodeInfo,
 		options: options,
 		manager: component.NewComponentsMgr(),
 	}
 	n.node.StartedAt = time.Now().UnixMilli()
-	return n
+
+	if err := n.bootstrapNode(); err != nil {
+		return nil, fmt.Errorf("node boot %w", err)
+	}
+
+	return n, nil
 }
 
 type Node struct {

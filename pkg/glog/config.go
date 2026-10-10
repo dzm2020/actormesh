@@ -41,7 +41,6 @@ func DefaultConfig() Config {
 	}
 }
 
-// NormalizeOptions normalizes logger options with defaults.
 func NormalizeOptions(options Config) Config {
 	defaults := DefaultConfig()
 	if options.Path == "" {

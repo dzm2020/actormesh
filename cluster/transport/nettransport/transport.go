@@ -54,6 +54,7 @@ func NewTransportWithOptions(options Options) *Transport {
 		peers:       newPeerManager(),
 		logger:      options.logger(),
 	}
+	t.config.Normalize()
 	t.ctx, t.cancel = context.WithCancel(context.Background())
 	return t
 }

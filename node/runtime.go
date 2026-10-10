@@ -101,9 +101,6 @@ func (n *Node) registerCoreComponents() error {
 }
 
 func (n *Node) Start() error {
-	if err := n.bootstrapNode(); err != nil {
-		return fmt.Errorf("node boot %w", err)
-	}
 	if err := n.registerCoreComponents(); err != nil {
 		return fmt.Errorf("register components :%w", err)
 	}

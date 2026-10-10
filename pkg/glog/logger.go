@@ -102,6 +102,10 @@ func Log() *Logger {
 	return log
 }
 
+func SetLogger(l *Logger) {
+	log = l
+}
+
 // Debug 输出 Debug 级别日志
 func Debug(msg string, fields ...zap.Field) {
 	if l := log; l != nil {
