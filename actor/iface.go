@@ -134,6 +134,8 @@ type Context interface {
 	Logger() *glog.Logger
 	// Stop 退出actor,stop之后写入的消息不会处理。
 	Stop()
+	//	ForceStop 强制退出
+	ForceStop()
 }
 
 type IMessageInvoker interface {

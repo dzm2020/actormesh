@@ -115,3 +115,6 @@ func (c *actorContext) Logger() *glog.Logger {
 func (c *actorContext) Stop() {
 	c.process.Stop(c.self)
 }
+func (c *actorContext) ForceStop() {
+	c.process.forceStop()
+}

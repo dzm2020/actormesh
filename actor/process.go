@@ -2,11 +2,12 @@ package actor
 
 import (
 	"fmt"
-	"github.com/dzm2020/actormesh/pkg/glog"
-	"github.com/dzm2020/actormesh/pkg/timer"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/dzm2020/actormesh/pkg/glog"
+	"github.com/dzm2020/actormesh/pkg/timer"
 
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -30,6 +31,7 @@ func newActorProcess(system *System, handler Actor, options SpawnOptions) *Proce
 		mailbox: newMailbox(options.MailboxSize),
 		current: Envelope{Sender: NoSender},
 		timers:  make(map[int64]*timer.Timer),
+		closed:  false,
 	}
 	proc.mailbox.RegisterHandlers(proc, NewDefaultDispatcher(300))
 	ctx.process = proc
@@ -49,6 +51,7 @@ type Process struct {
 	timers    map[int64]*timer.Timer
 	closingMu sync.RWMutex
 	closing   bool
+	closed    bool
 }
 
 func (p *Process) GetPID() *PID { return p.pid }
@@ -174,7 +177,7 @@ func (p *Process) InvokerMessage(msg interface{}) bool {
 		p.actor.Init(p.ctx)
 	case *stopEnvelopeMessage:
 		p.handleDestroy()
-		return true
+		p.closed = true
 	case Task:
 		message(p.ctx)
 	default:
@@ -184,7 +187,7 @@ func (p *Process) InvokerMessage(msg interface{}) bool {
 			p.actor.HandleTell(p.ctx, envelope.Payload)
 		}
 	}
-	return false
+	return p.closed
 }
 
 func (p *Process) handleAsk(envelope Envelope) {
@@ -234,4 +237,9 @@ func (p *Process) Stop(from *PID) {
 	}
 	p.closing = true
 	_ = p.mailbox.PushSystem(Envelope{Payload: &stopEnvelopeMessage{}, Sender: from})
+}
+
+func (p *Process) forceStop() {
+	p.handleDestroy()
+	p.closed = true
 }
