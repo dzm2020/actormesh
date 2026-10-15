@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/dzm2020/actormesh/actor"
+	"github.com/dzm2020/actormesh/gateway/route"
 	"github.com/dzm2020/actormesh/network"
 	"github.com/dzm2020/actormesh/pkg/component"
 	"github.com/dzm2020/actormesh/pkg/glog"
@@ -22,15 +23,17 @@ var (
 type ActorGateway interface {
 	actor.EnvelopeSender
 	actor.Supervisor
+	actor.Spawner
 }
 
-type AgentSpawner func(network.Connection) (*actor.PID, error)
+type AgentSpawner func(agent Agent) (actor.Actor, actor.SpawnOptions)
 
 type Options struct {
 	Logger  *glog.Logger
 	Server  network.Server
 	System  ActorGateway
 	Spawner AgentSpawner
+	Route   route.ClientRoute
 }
 
 func (m *Options) logger() *glog.Logger {
@@ -43,7 +46,7 @@ func (m *Options) logger() *glog.Logger {
 func New(options Options) *Gateway {
 	gateway := &Gateway{
 		server: options.Server,
-		bridge: NewGatewayBridge(options.System, options.Spawner),
+		bridge: NewGatewayBridge(options.System, options.Spawner, options.Route),
 		logger: options.logger(),
 	}
 	gateway.ctx, gateway.cancel = context.WithCancel(context.Background())

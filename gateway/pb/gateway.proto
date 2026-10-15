@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package gateway;
+
+import "google/protobuf/any.proto";
+
+option go_package = "github.com/dzm2020/actormesh/gateway/pb;gatewaypb";
+
+// PushToClient 通知目标 Agent 向其绑定的客户端推送消息。
+message PushToClient {
+  // 已注册 S2C 路由的业务消息，由目标 Agent 解包、编码并发送。
+  google.protobuf.Any message = 1;
+}

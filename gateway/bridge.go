@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dzm2020/actormesh/actor"
+	"github.com/dzm2020/actormesh/gateway/route"
 	"github.com/dzm2020/actormesh/network"
 	"github.com/dzm2020/actormesh/network/protocol"
 	"github.com/dzm2020/actormesh/pkg/grs"
@@ -17,6 +18,7 @@ import (
 var (
 	ErrClientAgentNotFound = errors.New("gateway client agent not found")
 	ErrGatewayClosing      = errors.New("gateway is closing")
+	ErrRouteNil            = errors.New("gateway route nil")
 )
 
 var _ network.TransportHandler = (*Bridge)(nil)
@@ -24,14 +26,16 @@ var _ network.TransportHandler = (*Bridge)(nil)
 type Bridge struct {
 	system  ActorGateway
 	spawner AgentSpawner
+	route   route.ClientRoute
 	pids    *maputil.ConcurrentMap[int64, *actor.PID]
 	group   sync.WaitGroup
 	mu      sync.RWMutex
 	closing bool
 }
 
-func NewGatewayBridge(system ActorGateway, spawner AgentSpawner) *Bridge {
+func NewGatewayBridge(system ActorGateway, spawner AgentSpawner, route route.ClientRoute) *Bridge {
 	return &Bridge{
+		route:   route,
 		system:  system,
 		spawner: spawner,
 		pids:    maputil.NewConcurrentMap[int64, *actor.PID](10),
@@ -44,6 +48,8 @@ func (b *Bridge) Validate() error {
 		return ErrSystemNil
 	case b.spawner == nil:
 		return ErrAgentSpawnerNil
+	case b.route == nil:
+		return ErrRouteNil
 	default:
 		return nil
 	}
@@ -56,10 +62,15 @@ func (b *Bridge) OnConnected(connection network.Connection) error {
 		return ErrGatewayClosing
 	}
 
-	pid, err := b.spawner(connection)
+	agent := newAgent(connection, b.route)
+	business, actOpts := b.spawner(agent)
+	agent.business = business
+
+	pid, err := b.system.SpawnActor(agent, actOpts)
 	if err != nil {
 		return fmt.Errorf("agent handle connected spawn err:%w", err)
 	}
+
 	connection.SetUserData(pid)
 	b.group.Add(1)
 	b.pids.Set(connection.ID(), pid)
